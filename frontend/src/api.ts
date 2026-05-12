@@ -56,6 +56,7 @@ export interface StockRow {
   exchange: string;
   currency: string;
   sector: string | null;
+  country_code: string | null;
   pluto_tier: "commission_free" | "standard_fee" | "not_listed";
   is_benchmark: boolean;
   pe_ratio: number | null;
