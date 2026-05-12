@@ -90,6 +90,12 @@ export interface PriceBar {
   volume: number | null;
 }
 
+export interface ScoreHistoryPoint {
+  date: string;
+  composite_score: number;
+  price_at_snapshot_dkk: number;
+}
+
 export interface Position {
   ticker: string;
   name: string;
@@ -161,6 +167,8 @@ export const api = {
     request<PriceBar[]>(`/api/stocks/${encodeURIComponent(ticker)}/history?days=${days}`),
   stockScore: (ticker: string) =>
     request<ScoreResponse>(`/api/stocks/${encodeURIComponent(ticker)}/score`),
+  stockScoreHistory: (ticker: string, days = 90) =>
+    request<ScoreHistoryPoint[]>(`/api/stocks/${encodeURIComponent(ticker)}/score-history?days=${days}`),
   allScores: () => request<ScoreResponse[]>("/api/scores"),
 
   register: (email: string, password: string, display_name: string) =>

@@ -9,7 +9,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import PriceHistory, Stock
+from app.models import DailyScoreSnapshot, PriceHistory, Stock
 from app.services.scoring import score_stock
 
 router = APIRouter(prefix="/api", tags=["stocks"])
@@ -116,6 +116,32 @@ def stock_score(ticker: str, db: Session = Depends(get_db)) -> dict:
     if stock is None:
         raise HTTPException(404, f"unknown ticker {ticker!r}")
     return score_stock(db, stock)
+
+
+@router.get("/stocks/{ticker}/score-history")
+def stock_score_history(ticker: str, days: int = 90, db: Session = Depends(get_db)) -> list[dict]:
+    """Composite score per snapshot date for this stock — used for the detail-page sparkline."""
+    stock = db.query(Stock).filter(Stock.ticker == ticker).one_or_none()
+    if stock is None:
+        raise HTTPException(404, f"unknown ticker {ticker!r}")
+    cutoff = date.today() - timedelta(days=days + 1)
+    rows = (
+        db.query(DailyScoreSnapshot)
+        .filter(
+            DailyScoreSnapshot.stock_id == stock.id,
+            DailyScoreSnapshot.snapshot_date >= cutoff,
+        )
+        .order_by(DailyScoreSnapshot.snapshot_date)
+        .all()
+    )
+    return [
+        {
+            "date": r.snapshot_date.isoformat(),
+            "composite_score": round(r.composite_score, 2),
+            "price_at_snapshot_dkk": r.price_at_snapshot_dkk,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/scores")
