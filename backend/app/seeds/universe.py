@@ -1,18 +1,23 @@
-"""Curated Phase 1 stock universe: 15 US large-caps + 15 Nordic blue chips + 3 benchmarks.
+"""Curated stock universe: US large-caps + heavy Nordic coverage + benchmarks.
 
-NOTE on `pluto_tier`: these are PLACEHOLDER classifications based on the general pattern
-of Nordic commission-free brokers (curated list of major US + Nordic names is fee-free,
+NOTE on `pluto_tier`: PLACEHOLDER classifications based on the general pattern of
+Nordic commission-free brokers (curated list of major US + Nordic names is fee-free,
 everything else is `standard_fee`). The real Pluto Markets list should be hand-verified
 against pluto.markets and edited here before treating tier as authoritative.
 
-NOTE on `wsb_aliases`: pipe-separated tokens that WSB / r/stocks posters typically use to
-refer to each stock. US tickers are usually just their ticker (`AAPL`, `MSFT`). Nordic
-tickers need normalized aliases since "NOVO-B.CO" never appears in English Reddit posts —
-Novo Nordisk is "NOVO" or its ADR "NVO". The mention scraper word-boundary-matches each
-alias case-insensitively.
+NOTE on `wsb_aliases`: pipe-separated tokens that WSB / r/stocks posters typically use
+to refer to each stock, AND used by the news-sentiment ticker-mention filter. Use the
+ticker plus 1-2 unambiguous longer forms. Avoid single common-English letters as aliases
+(F, T, C alone) — they cause false positives in word-boundary matching. Bare tickers of
+length >= 3 are usually safe.
 
 NOTE on `country_code`: FIPS code (NOT ISO) so it joins directly with GDELT data.
-FIPS: US, DA (Denmark), SW (Sweden), NO (Norway), FI (Finland).
+FIPS: US (United States), DA (Denmark), SW (Sweden), NO (Norway), FI (Finland).
+
+NOTE on yfinance suffixes by exchange:
+- Copenhagen: .CO    - Stockholm: .ST    - Oslo: .OL    - Helsinki: .HE
+- US: no suffix
+- Some tickers may move/delist; the ingestion logger flags those.
 """
 
 from dataclasses import dataclass
@@ -36,50 +41,145 @@ class SeedStock:
 
 
 UNIVERSE: list[SeedStock] = [
-    # ---- US large caps ----
-    SeedStock("AAPL",  "Apple Inc.",                     "NASDAQ", "USD", "Technology",          "commission_free", "AAPL|Apple",                   "US"),
-    SeedStock("MSFT",  "Microsoft Corporation",          "NASDAQ", "USD", "Technology",          "commission_free", "MSFT|Microsoft",               "US"),
-    SeedStock("GOOGL", "Alphabet Inc. Class A",          "NASDAQ", "USD", "Communication",       "commission_free", "GOOGL|GOOG|Alphabet|Google",   "US"),
-    SeedStock("AMZN",  "Amazon.com Inc.",                "NASDAQ", "USD", "Consumer Cyclical",   "commission_free", "AMZN|Amazon",                  "US"),
-    SeedStock("NVDA",  "NVIDIA Corporation",             "NASDAQ", "USD", "Technology",          "commission_free", "NVDA|Nvidia",                  "US"),
-    SeedStock("META",  "Meta Platforms Inc.",            "NASDAQ", "USD", "Communication",       "commission_free", "META|Meta|Facebook|FB",        "US"),
-    SeedStock("TSLA",  "Tesla Inc.",                     "NASDAQ", "USD", "Consumer Cyclical",   "commission_free", "TSLA|Tesla",                   "US"),
-    SeedStock("BRK-B", "Berkshire Hathaway Inc. Class B","NYSE",   "USD", "Financial Services",  "standard_fee",    "BRK|BRK.B|Berkshire|Buffett",  "US"),
-    SeedStock("JPM",   "JPMorgan Chase & Co.",           "NYSE",   "USD", "Financial Services",  "commission_free", "JPM|JPMorgan",                 "US"),
-    SeedStock("V",     "Visa Inc.",                      "NYSE",   "USD", "Financial Services",  "commission_free", "Visa",                         "US"),
-    SeedStock("WMT",   "Walmart Inc.",                   "NYSE",   "USD", "Consumer Defensive",  "commission_free", "WMT|Walmart",                  "US"),
-    SeedStock("JNJ",   "Johnson & Johnson",              "NYSE",   "USD", "Healthcare",          "commission_free", "JNJ",                          "US"),
-    SeedStock("PG",    "Procter & Gamble Company",       "NYSE",   "USD", "Consumer Defensive",  "commission_free", "Procter",                      "US"),
-    SeedStock("KO",    "Coca-Cola Company",              "NYSE",   "USD", "Consumer Defensive",  "commission_free", "Coca-Cola|CocaCola",           "US"),
-    SeedStock("INTC",  "Intel Corporation",              "NASDAQ", "USD", "Technology",          "commission_free", "INTC|Intel",                   "US"),
+    # ===================================================================
+    # US large + mega caps
+    # ===================================================================
+    SeedStock("AAPL",  "Apple Inc.",                       "NASDAQ", "USD", "Technology",          "commission_free", "AAPL|Apple",                       "US"),
+    SeedStock("MSFT",  "Microsoft Corporation",            "NASDAQ", "USD", "Technology",          "commission_free", "MSFT|Microsoft",                   "US"),
+    SeedStock("GOOGL", "Alphabet Inc. Class A",            "NASDAQ", "USD", "Communication",       "commission_free", "GOOGL|GOOG|Alphabet|Google",       "US"),
+    SeedStock("AMZN",  "Amazon.com Inc.",                  "NASDAQ", "USD", "Consumer Cyclical",   "commission_free", "AMZN|Amazon",                      "US"),
+    SeedStock("NVDA",  "NVIDIA Corporation",               "NASDAQ", "USD", "Technology",          "commission_free", "NVDA|Nvidia",                      "US"),
+    SeedStock("META",  "Meta Platforms Inc.",              "NASDAQ", "USD", "Communication",       "commission_free", "META|Meta|Facebook",               "US"),
+    SeedStock("TSLA",  "Tesla Inc.",                       "NASDAQ", "USD", "Consumer Cyclical",   "commission_free", "TSLA|Tesla",                       "US"),
+    SeedStock("BRK-B", "Berkshire Hathaway Inc. Class B",  "NYSE",   "USD", "Financial Services",  "standard_fee",    "BRK|BRK.B|Berkshire|Buffett",      "US"),
+    SeedStock("JPM",   "JPMorgan Chase & Co.",             "NYSE",   "USD", "Financial Services",  "commission_free", "JPM|JPMorgan",                     "US"),
+    SeedStock("V",     "Visa Inc.",                        "NYSE",   "USD", "Financial Services",  "commission_free", "Visa",                             "US"),
+    SeedStock("MA",    "Mastercard Incorporated",          "NYSE",   "USD", "Financial Services",  "commission_free", "Mastercard",                       "US"),
+    SeedStock("WMT",   "Walmart Inc.",                     "NYSE",   "USD", "Consumer Defensive",  "commission_free", "WMT|Walmart",                      "US"),
+    SeedStock("JNJ",   "Johnson & Johnson",                "NYSE",   "USD", "Healthcare",          "commission_free", "JNJ|Johnson",                      "US"),
+    SeedStock("PG",    "Procter & Gamble Company",         "NYSE",   "USD", "Consumer Defensive",  "commission_free", "Procter",                          "US"),
+    SeedStock("KO",    "Coca-Cola Company",                "NYSE",   "USD", "Consumer Defensive",  "commission_free", "Coca-Cola|CocaCola",               "US"),
+    SeedStock("PEP",   "PepsiCo Inc.",                     "NASDAQ", "USD", "Consumer Defensive",  "commission_free", "PEP|PepsiCo",                      "US"),
+    SeedStock("INTC",  "Intel Corporation",                "NASDAQ", "USD", "Technology",          "commission_free", "INTC|Intel",                       "US"),
+    SeedStock("AMD",   "Advanced Micro Devices Inc.",      "NASDAQ", "USD", "Technology",          "commission_free", "AMD",                              "US"),
+    SeedStock("ORCL",  "Oracle Corporation",               "NYSE",   "USD", "Technology",          "commission_free", "ORCL|Oracle",                      "US"),
+    SeedStock("CRM",   "Salesforce Inc.",                  "NYSE",   "USD", "Technology",          "commission_free", "CRM|Salesforce",                   "US"),
+    SeedStock("ADBE",  "Adobe Inc.",                       "NASDAQ", "USD", "Technology",          "commission_free", "ADBE|Adobe",                       "US"),
+    SeedStock("AVGO",  "Broadcom Inc.",                    "NASDAQ", "USD", "Technology",          "commission_free", "AVGO|Broadcom",                    "US"),
+    SeedStock("CSCO",  "Cisco Systems Inc.",               "NASDAQ", "USD", "Technology",          "commission_free", "CSCO|Cisco",                       "US"),
+    SeedStock("QCOM",  "QUALCOMM Incorporated",            "NASDAQ", "USD", "Technology",          "commission_free", "QCOM|Qualcomm",                    "US"),
+    SeedStock("TXN",   "Texas Instruments Incorporated",   "NASDAQ", "USD", "Technology",          "commission_free", "TXN|Texas Instruments",            "US"),
+    SeedStock("IBM",   "International Business Machines",  "NYSE",   "USD", "Technology",          "commission_free", "IBM",                              "US"),
+    SeedStock("NFLX",  "Netflix Inc.",                     "NASDAQ", "USD", "Communication",       "commission_free", "NFLX|Netflix",                     "US"),
+    SeedStock("DIS",   "Walt Disney Company",              "NYSE",   "USD", "Communication",       "commission_free", "DIS|Disney",                       "US"),
+    SeedStock("COST",  "Costco Wholesale Corporation",     "NASDAQ", "USD", "Consumer Defensive",  "commission_free", "COST|Costco",                      "US"),
+    SeedStock("HD",    "Home Depot Inc.",                  "NYSE",   "USD", "Consumer Cyclical",   "commission_free", "Home Depot",                       "US"),
+    SeedStock("MCD",   "McDonald's Corporation",           "NYSE",   "USD", "Consumer Cyclical",   "commission_free", "MCD|McDonald",                     "US"),
+    SeedStock("SBUX",  "Starbucks Corporation",            "NASDAQ", "USD", "Consumer Cyclical",   "commission_free", "SBUX|Starbucks",                   "US"),
+    SeedStock("NKE",   "NIKE Inc.",                        "NYSE",   "USD", "Consumer Cyclical",   "commission_free", "NKE|Nike",                         "US"),
+    SeedStock("TGT",   "Target Corporation",               "NYSE",   "USD", "Consumer Defensive",  "commission_free", "TGT|Target Corp",                  "US"),
+    SeedStock("BAC",   "Bank of America Corporation",      "NYSE",   "USD", "Financial Services",  "commission_free", "BAC|Bank of America",              "US"),
+    SeedStock("WFC",   "Wells Fargo & Company",            "NYSE",   "USD", "Financial Services",  "commission_free", "WFC|Wells Fargo",                  "US"),
+    SeedStock("GS",    "Goldman Sachs Group Inc.",         "NYSE",   "USD", "Financial Services",  "commission_free", "Goldman Sachs|Goldman",            "US"),
+    SeedStock("MS",    "Morgan Stanley",                   "NYSE",   "USD", "Financial Services",  "commission_free", "Morgan Stanley",                   "US"),
+    SeedStock("PFE",   "Pfizer Inc.",                      "NYSE",   "USD", "Healthcare",          "commission_free", "PFE|Pfizer",                       "US"),
+    SeedStock("MRK",   "Merck & Co. Inc.",                 "NYSE",   "USD", "Healthcare",          "commission_free", "MRK|Merck",                        "US"),
+    SeedStock("ABBV",  "AbbVie Inc.",                      "NYSE",   "USD", "Healthcare",          "commission_free", "ABBV|AbbVie",                      "US"),
+    SeedStock("LLY",   "Eli Lilly and Company",            "NYSE",   "USD", "Healthcare",          "commission_free", "LLY|Eli Lilly",                    "US"),
+    SeedStock("UNH",   "UnitedHealth Group Incorporated",  "NYSE",   "USD", "Healthcare",          "commission_free", "UNH|UnitedHealth",                 "US"),
+    SeedStock("XOM",   "Exxon Mobil Corporation",          "NYSE",   "USD", "Energy",              "commission_free", "XOM|Exxon",                        "US"),
+    SeedStock("CVX",   "Chevron Corporation",              "NYSE",   "USD", "Energy",              "commission_free", "CVX|Chevron",                      "US"),
+    SeedStock("BA",    "Boeing Company",                   "NYSE",   "USD", "Industrials",         "commission_free", "Boeing",                           "US"),
+    SeedStock("CAT",   "Caterpillar Inc.",                 "NYSE",   "USD", "Industrials",         "commission_free", "Caterpillar",                      "US"),
+    SeedStock("DE",    "Deere & Company",                  "NYSE",   "USD", "Industrials",         "commission_free", "Deere",                            "US"),
+    SeedStock("LMT",   "Lockheed Martin Corporation",      "NYSE",   "USD", "Industrials",         "commission_free", "LMT|Lockheed",                     "US"),
+    SeedStock("RTX",   "RTX Corporation",                  "NYSE",   "USD", "Industrials",         "commission_free", "RTX|Raytheon",                     "US"),
+    SeedStock("COIN",  "Coinbase Global Inc.",             "NASDAQ", "USD", "Financial Services",  "commission_free", "COIN|Coinbase",                    "US"),
+    SeedStock("PYPL",  "PayPal Holdings Inc.",             "NASDAQ", "USD", "Financial Services",  "commission_free", "PYPL|PayPal",                      "US"),
+    SeedStock("SHOP",  "Shopify Inc.",                     "NYSE",   "USD", "Technology",          "commission_free", "SHOP|Shopify",                     "US"),
+    SeedStock("UBER",  "Uber Technologies Inc.",           "NYSE",   "USD", "Technology",          "commission_free", "UBER|Uber",                        "US"),
+    SeedStock("ABNB",  "Airbnb Inc.",                      "NASDAQ", "USD", "Consumer Cyclical",   "commission_free", "ABNB|Airbnb",                      "US"),
+    SeedStock("SNOW",  "Snowflake Inc.",                   "NYSE",   "USD", "Technology",          "commission_free", "SNOW|Snowflake",                   "US"),
+    SeedStock("PLTR",  "Palantir Technologies Inc.",       "NYSE",   "USD", "Technology",          "commission_free", "PLTR|Palantir",                    "US"),
+    SeedStock("CRWD",  "CrowdStrike Holdings Inc.",        "NASDAQ", "USD", "Technology",          "commission_free", "CRWD|CrowdStrike",                 "US"),
+    SeedStock("PANW",  "Palo Alto Networks Inc.",          "NASDAQ", "USD", "Technology",          "commission_free", "PANW|Palo Alto",                   "US"),
+    SeedStock("VZ",    "Verizon Communications Inc.",      "NYSE",   "USD", "Communication",       "commission_free", "Verizon",                          "US"),
+    SeedStock("CMCSA", "Comcast Corporation",              "NASDAQ", "USD", "Communication",       "commission_free", "CMCSA|Comcast",                    "US"),
 
-    # ---- Denmark (FIPS: DA) ----
-    SeedStock("NOVO-B.CO",   "Novo Nordisk A/S B",       "CPH", "DKK", "Healthcare",            "commission_free", "NOVO|NVO|Novo",     "DA"),
-    SeedStock("MAERSK-B.CO", "A.P. Moller-Maersk B",     "CPH", "DKK", "Industrials",           "commission_free", "MAERSK|Maersk",     "DA"),
-    SeedStock("DSV.CO",      "DSV A/S",                  "CPH", "DKK", "Industrials",           "commission_free", "DSV",               "DA"),
-    SeedStock("ORSTED.CO",   "Orsted A/S",               "CPH", "DKK", "Utilities",             "commission_free", "ORSTED|Orsted",     "DA"),
-    SeedStock("CARL-B.CO",   "Carlsberg B",              "CPH", "DKK", "Consumer Defensive",    "commission_free", "Carlsberg",         "DA"),
-    SeedStock("DANSKE.CO",   "Danske Bank A/S",          "CPH", "DKK", "Financial Services",    "commission_free", "Danske",            "DA"),
+    # ===================================================================
+    # Denmark (FIPS: DA) — 25 names
+    # ===================================================================
+    SeedStock("NOVO-B.CO",   "Novo Nordisk A/S B",         "CPH", "DKK", "Healthcare",          "commission_free", "NOVO|NVO|Novo Nordisk",        "DA"),
+    SeedStock("MAERSK-B.CO", "A.P. Moller-Maersk B",       "CPH", "DKK", "Industrials",         "commission_free", "MAERSK|Maersk",                "DA"),
+    SeedStock("DSV.CO",      "DSV A/S",                    "CPH", "DKK", "Industrials",         "commission_free", "DSV",                          "DA"),
+    SeedStock("ORSTED.CO",   "Orsted A/S",                 "CPH", "DKK", "Utilities",           "commission_free", "ORSTED|Orsted",                "DA"),
+    SeedStock("CARL-B.CO",   "Carlsberg B",                "CPH", "DKK", "Consumer Defensive",  "commission_free", "Carlsberg",                    "DA"),
+    SeedStock("DANSKE.CO",   "Danske Bank A/S",            "CPH", "DKK", "Financial Services",  "commission_free", "Danske Bank",                  "DA"),
+    SeedStock("VWS.CO",      "Vestas Wind Systems A/S",    "CPH", "DKK", "Industrials",         "commission_free", "VWS|Vestas",                   "DA"),
+    SeedStock("PNDORA.CO",   "Pandora A/S",                "CPH", "DKK", "Consumer Cyclical",   "commission_free", "Pandora",                      "DA"),
+    SeedStock("GMAB.CO",     "Genmab A/S",                 "CPH", "DKK", "Healthcare",          "commission_free", "GMAB|Genmab",                  "DA"),
+    SeedStock("COLO-B.CO",   "Coloplast B",                "CPH", "DKK", "Healthcare",          "commission_free", "Coloplast",                    "DA"),
+    SeedStock("DEMANT.CO",   "Demant A/S",                 "CPH", "DKK", "Healthcare",          "commission_free", "Demant|William Demant",        "DA"),
+    SeedStock("GN.CO",       "GN Store Nord A/S",          "CPH", "DKK", "Healthcare",          "commission_free", "GN Store Nord",                "DA"),
+    SeedStock("JYSK.CO",     "Jyske Bank A/S",             "CPH", "DKK", "Financial Services",  "commission_free", "Jyske Bank",                   "DA"),
+    SeedStock("NETC.CO",     "Netcompany Group A/S",       "CPH", "DKK", "Technology",          "commission_free", "Netcompany",                   "DA"),
+    SeedStock("ROCK-B.CO",   "Rockwool A/S B",             "CPH", "DKK", "Industrials",         "commission_free", "Rockwool",                     "DA"),
+    SeedStock("SIM.CO",      "SimCorp A/S",                "CPH", "DKK", "Technology",          "commission_free", "SimCorp",                      "DA"),
+    SeedStock("TRYG.CO",     "Tryg A/S",                   "CPH", "DKK", "Financial Services",  "commission_free", "Tryg",                         "DA"),
+    SeedStock("AMBU-B.CO",   "Ambu A/S B",                 "CPH", "DKK", "Healthcare",          "commission_free", "AMBU|Ambu",                    "DA"),
+    SeedStock("ISS.CO",      "ISS A/S",                    "CPH", "DKK", "Industrials",         "commission_free", "ISS A/S",                      "DA"),
+    SeedStock("HLUN-B.CO",   "H. Lundbeck A/S B",          "CPH", "DKK", "Healthcare",          "commission_free", "Lundbeck",                     "DA"),
+    SeedStock("RBREW.CO",    "Royal Unibrew A/S",          "CPH", "DKK", "Consumer Defensive",  "commission_free", "Royal Unibrew|Unibrew",        "DA"),
+    SeedStock("TOP.CO",      "Topdanmark A/S",             "CPH", "DKK", "Financial Services",  "commission_free", "Topdanmark",                   "DA"),
+    SeedStock("ZEAL.CO",     "Zealand Pharma A/S",         "CPH", "DKK", "Healthcare",          "standard_fee",    "Zealand Pharma",               "DA"),
+    SeedStock("SYDB.CO",     "Sydbank A/S",                "CPH", "DKK", "Financial Services",  "commission_free", "Sydbank",                      "DA"),
+    SeedStock("BAVA.CO",     "Bavarian Nordic A/S",        "CPH", "DKK", "Healthcare",          "standard_fee",    "Bavarian Nordic",              "DA"),
 
-    # ---- Sweden (FIPS: SW) ----
-    SeedStock("VOLV-B.ST",   "Volvo AB B",               "STO", "SEK", "Industrials",           "commission_free", "Volvo",             "SW"),
-    SeedStock("ATCO-A.ST",   "Atlas Copco A",            "STO", "SEK", "Industrials",           "commission_free", "Atlas Copco",       "SW"),
-    SeedStock("ERIC-B.ST",   "Telefonaktiebolaget LM Ericsson B", "STO", "SEK", "Technology",   "commission_free", "ERIC|Ericsson",     "SW"),
-    SeedStock("HM-B.ST",     "H & M Hennes & Mauritz B", "STO", "SEK", "Consumer Cyclical",     "commission_free", "H&M",               "SW"),
-    SeedStock("INVE-B.ST",   "Investor AB B",            "STO", "SEK", "Financial Services",    "standard_fee",    "Investor AB",       "SW"),
+    # ===================================================================
+    # Sweden (FIPS: SW) — 12 names
+    # ===================================================================
+    SeedStock("VOLV-B.ST",   "Volvo AB B",                 "STO", "SEK", "Industrials",         "commission_free", "Volvo",                        "SW"),
+    SeedStock("ATCO-A.ST",   "Atlas Copco A",              "STO", "SEK", "Industrials",         "commission_free", "Atlas Copco",                  "SW"),
+    SeedStock("ERIC-B.ST",   "Ericsson B",                 "STO", "SEK", "Technology",          "commission_free", "ERIC|Ericsson",                "SW"),
+    SeedStock("HM-B.ST",     "H & M Hennes & Mauritz B",   "STO", "SEK", "Consumer Cyclical",   "commission_free", "H&M",                          "SW"),
+    SeedStock("INVE-B.ST",   "Investor AB B",              "STO", "SEK", "Financial Services",  "standard_fee",    "Investor AB",                  "SW"),
+    SeedStock("SAND.ST",     "Sandvik AB",                 "STO", "SEK", "Industrials",         "commission_free", "Sandvik",                      "SW"),
+    SeedStock("SKF-B.ST",    "SKF B",                      "STO", "SEK", "Industrials",         "commission_free", "SKF",                          "SW"),
+    SeedStock("ALFA.ST",     "Alfa Laval AB",              "STO", "SEK", "Industrials",         "commission_free", "Alfa Laval",                   "SW"),
+    SeedStock("AZN.ST",      "AstraZeneca PLC (SE)",       "STO", "SEK", "Healthcare",          "commission_free", "AZN|AstraZeneca",              "SW"),
+    SeedStock("TELIA.ST",    "Telia Company AB",           "STO", "SEK", "Communication",       "commission_free", "Telia",                        "SW"),
+    SeedStock("SEB-A.ST",    "Skandinaviska Enskilda Banken A","STO","SEK","Financial Services","commission_free", "SEB|Skandinaviska",            "SW"),
+    SeedStock("SWED-A.ST",   "Swedbank AB A",              "STO", "SEK", "Financial Services",  "commission_free", "Swedbank",                     "SW"),
 
-    # ---- Norway (FIPS: NO) ----
-    SeedStock("EQNR.OL",     "Equinor ASA",              "OSL", "NOK", "Energy",                "commission_free", "EQNR|Equinor",      "NO"),
-    SeedStock("DNB.OL",      "DNB Bank ASA",             "OSL", "NOK", "Financial Services",    "commission_free", "DNB",               "NO"),
-    SeedStock("TEL.OL",      "Telenor ASA",              "OSL", "NOK", "Communication",         "commission_free", "Telenor",           "NO"),
+    # ===================================================================
+    # Norway (FIPS: NO) — 8 names
+    # ===================================================================
+    SeedStock("EQNR.OL",     "Equinor ASA",                "OSL", "NOK", "Energy",              "commission_free", "EQNR|Equinor",                 "NO"),
+    SeedStock("DNB.OL",      "DNB Bank ASA",               "OSL", "NOK", "Financial Services",  "commission_free", "DNB",                          "NO"),
+    SeedStock("TEL.OL",      "Telenor ASA",                "OSL", "NOK", "Communication",       "commission_free", "Telenor",                      "NO"),
+    SeedStock("YAR.OL",      "Yara International ASA",     "OSL", "NOK", "Industrials",         "commission_free", "YAR|Yara",                     "NO"),
+    SeedStock("NHY.OL",      "Norsk Hydro ASA",            "OSL", "NOK", "Industrials",         "commission_free", "NHY|Norsk Hydro",              "NO"),
+    SeedStock("MOWI.OL",     "Mowi ASA",                   "OSL", "NOK", "Consumer Defensive",  "commission_free", "MOWI|Mowi",                    "NO"),
+    SeedStock("SUBC.OL",     "Subsea 7 S.A.",              "OSL", "NOK", "Energy",              "commission_free", "Subsea 7|Subsea7",             "NO"),
+    SeedStock("AKERBP.OL",   "Aker BP ASA",                "OSL", "NOK", "Energy",              "commission_free", "Aker BP",                      "NO"),
 
-    # ---- Finland (FIPS: FI) ----
-    SeedStock("NOKIA.HE",    "Nokia Oyj",                "HEL", "EUR", "Technology",            "commission_free", "NOK|Nokia",         "FI"),
+    # ===================================================================
+    # Finland (FIPS: FI) — 5 names
+    # ===================================================================
+    SeedStock("NOKIA.HE",    "Nokia Oyj",                  "HEL", "EUR", "Technology",          "commission_free", "NOK|Nokia",                    "FI"),
+    SeedStock("KNEBV.HE",    "KONE Oyj B",                 "HEL", "EUR", "Industrials",         "commission_free", "KONE",                         "FI"),
+    SeedStock("UPM.HE",      "UPM-Kymmene Oyj",            "HEL", "EUR", "Industrials",         "commission_free", "UPM|UPM-Kymmene",              "FI"),
+    SeedStock("NESTE.HE",    "Neste Oyj",                  "HEL", "EUR", "Energy",              "commission_free", "Neste",                        "FI"),
+    SeedStock("FORTUM.HE",   "Fortum Oyj",                 "HEL", "EUR", "Utilities",           "commission_free", "Fortum",                       "FI"),
 
-    # ---- Benchmarks ----
-    SeedStock("SPY",          "SPDR S&P 500 ETF Trust",  "NYSE", "USD", "ETF",                  "not_listed", "SPY|S&P",   "US", is_benchmark=True),
-    SeedStock("^OMXC25",      "OMX Copenhagen 25",       "CPH",  "DKK", "Index",                "not_listed", "OMXC25",    "DA", is_benchmark=True),
-    SeedStock("^OMXSPI",      "OMX Stockholm All-Share", "STO",  "SEK", "Index",                "not_listed", "OMXSPI|OMXS","SW", is_benchmark=True),
+    # ===================================================================
+    # Benchmarks (not tradeable; for validation comparison)
+    # ===================================================================
+    SeedStock("SPY",     "SPDR S&P 500 ETF Trust",      "NYSE", "USD", "ETF",   "not_listed", "SPY|S&P 500",     "US", is_benchmark=True),
+    SeedStock("QQQ",     "Invesco QQQ Trust",           "NASDAQ","USD","ETF",   "not_listed", "QQQ|Nasdaq 100",  "US", is_benchmark=True),
+    SeedStock("^OMXC25", "OMX Copenhagen 25",           "CPH",  "DKK", "Index", "not_listed", "OMXC25",          "DA", is_benchmark=True),
+    SeedStock("^OMXSPI", "OMX Stockholm All-Share",     "STO",  "SEK", "Index", "not_listed", "OMXSPI|OMXS",     "SW", is_benchmark=True),
+    SeedStock("^OMXH25", "OMX Helsinki 25",             "HEL",  "EUR", "Index", "not_listed", "OMXH25",          "FI", is_benchmark=True),
 ]
 
 
