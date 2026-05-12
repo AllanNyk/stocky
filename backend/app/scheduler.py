@@ -12,6 +12,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.db import SessionLocal
+from app.services.gdelt import refresh_country_tone
 from app.services.ingestion import refresh_all_prices
 from app.services.news_sentiment import refresh_news_sentiment
 from app.services.reddit import refresh_reddit_mentions
@@ -49,6 +50,16 @@ def _refresh_news_job() -> None:
             log.exception("news refresh failed: %s", e)
 
 
+def _refresh_gdelt_job() -> None:
+    log.info("scheduled job: refresh_country_tone")
+    with SessionLocal() as db:
+        try:
+            result = refresh_country_tone(db)
+            log.info("gdelt refresh complete: %s", result)
+        except Exception as e:
+            log.exception("gdelt refresh failed: %s", e)
+
+
 def _daily_snapshot_job() -> None:
     log.info("scheduled job: run_daily_snapshot")
     with SessionLocal() as db:
@@ -67,6 +78,8 @@ def build_scheduler() -> BackgroundScheduler:
     sched.add_job(_refresh_reddit_job, CronTrigger(hour=23, minute=5), id="refresh_reddit", replace_existing=True)
     # News sentiment refresh — also before snapshot.
     sched.add_job(_refresh_news_job, CronTrigger(hour=23, minute=7), id="refresh_news", replace_existing=True)
-    # Snapshot 10 minutes later so prices + reddit + news have landed.
+    # GDELT geopolitical tone — also before snapshot.
+    sched.add_job(_refresh_gdelt_job, CronTrigger(hour=23, minute=8), id="refresh_gdelt", replace_existing=True)
+    # Snapshot 10 minutes later so all upstream signals have landed.
     sched.add_job(_daily_snapshot_job, CronTrigger(hour=23, minute=10), id="daily_snapshot", replace_existing=True)
     return sched

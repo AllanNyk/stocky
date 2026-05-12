@@ -28,6 +28,7 @@ def get_db() -> Generator[Session, None, None]:
 _ADDITIVE_COLUMNS: list[tuple[str, str, str]] = [
     # (table, column_name, ALTER ADD COLUMN body — types/defaults compatible with SQLite + Postgres)
     ("stocks", "wsb_aliases", "VARCHAR(200)"),
+    ("stocks", "country_code", "VARCHAR(4)"),
 ]
 
 

@@ -22,6 +22,9 @@ class Stock(Base):
     exchange: Mapped[str] = mapped_column(String(20))
     currency: Mapped[str] = mapped_column(String(3))
     sector: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # FIPS country code of the primary listing exchange (US, DA, SW, NO, FI, ...).
+    # Different from ISO 3166 — GDELT uses FIPS, so we store FIPS for easy joins.
+    country_code: Mapped[str | None] = mapped_column(String(4), nullable=True)
     pluto_tier: Mapped[str] = mapped_column(String(20), default=PlutoTier.NOT_LISTED.value)
     is_benchmark: Mapped[bool] = mapped_column(default=False)
 
@@ -80,6 +83,24 @@ class RedditMentionCount(Base):
     mention_date: Mapped[date] = mapped_column(Date, index=True)
     count: Mapped[int] = mapped_column(Integer, default=0)
     subreddits_seen: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class CountryToneScore(Base):
+    """Daily GDELT mean tone per FIPS country code.
+
+    GDELT's "tone" is roughly the average sentiment of articles mentioning a country
+    in [-10, +10] (negative = bad news, positive = good). Wars, financial crises,
+    and political turmoil drive tone sharply negative; routine days hover near 0.
+    """
+
+    __tablename__ = "country_tone_scores"
+    __table_args__ = (UniqueConstraint("country_code", "score_date", name="uq_country_tone_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    country_code: Mapped[str] = mapped_column(String(4), index=True)
+    score_date: Mapped[date] = mapped_column(Date, index=True)
+    mean_tone: Mapped[float] = mapped_column(Float)
+    article_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class NewsSentimentScore(Base):
