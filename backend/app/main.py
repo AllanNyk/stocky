@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.db import Base, SessionLocal, engine
+from app.db import Base, SessionLocal, apply_additive_migrations, engine
 from app import models  # noqa: F401  ensures model classes register with Base.metadata
 from app.routers import admin, auth, portfolio, stocks, validation
 from app.scheduler import build_scheduler
@@ -14,6 +14,7 @@ from app.seeds.universe import seed_universe
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    apply_additive_migrations()
     with SessionLocal() as db:
         seed_universe(db)
     sched = build_scheduler()

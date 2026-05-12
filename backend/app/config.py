@@ -11,9 +11,17 @@ class Settings(BaseSettings):
     initial_mock_cash: float = 100_000.0
     cors_origins: str = "http://localhost:5173"
 
+    reddit_client_id: str = ""
+    reddit_client_secret: str = ""
+    reddit_user_agent: str = "stocky-local/0.1"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def reddit_enabled(self) -> bool:
+        return bool(self.reddit_client_id and self.reddit_client_secret)
 
 
 settings = Settings()

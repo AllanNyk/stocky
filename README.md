@@ -10,6 +10,7 @@ A paper-trading web app with a transparent prediction score and continuous forwa
 - Composite prediction score (0–100) from rule-based signals:
   - P/E percentile vs sector peers (cheap = bullish).
   - 50-day price momentum vs SMA.
+  - WSB mention delta — today's count on r/wallstreetbets + r/stocks + r/investing vs 7-day baseline (attention spike = high score).
 - **Continuous forward-testing**: each day's snapshot freezes scores + entry prices; realized 1d / 7d / 30d / 90d returns are computed on read. Two virtual portfolios run side-by-side:
   - Top-5 by composite score, equal weight.
   - Every stock with score ≥ 70, equal weight.
@@ -56,9 +57,24 @@ Invoke-RestMethod -Method POST http://localhost:8000/api/validation/run-snapshot
 
 Then open <http://localhost:5173>, register an account, and you're ready.
 
+### Optional: enable WSB / Reddit sentiment
+
+The `wsb_mention_delta` signal stays at confidence 0 until Reddit credentials are set.
+To enable:
+
+1. Create a free script-type app at <https://www.reddit.com/prefs/apps>.
+2. Paste `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USER_AGENT` into `backend/.env`.
+3. Restart the backend, then:
+   ```powershell
+   Invoke-RestMethod -Method POST http://localhost:8000/api/admin/refresh-reddit
+   ```
+4. After ~7 days of daily scrapes the signal has a real baseline; until then,
+   today's count is the only data point.
+
 ## Daily jobs (APScheduler, in-process)
 
 - `23:00` Europe/Copenhagen — refresh prices + FX.
+- `23:05` Europe/Copenhagen — scrape Reddit mentions (skipped if creds missing).
 - `23:10` Europe/Copenhagen — run score snapshot (locks today's composites and updates the virtual portfolios).
 
 ## Endpoint map
@@ -82,6 +98,7 @@ Then open <http://localhost:5173>, register an account, and you're ready.
 | POST | `/api/validation/run-snapshot` | – | Manually run today's snapshot. |
 | POST | `/api/admin/refresh-fx` | – | Pull DKK FX rates. |
 | POST | `/api/admin/refresh-prices?period=1y` | – | Pull OHLCV for every ticker. |
+| POST | `/api/admin/refresh-reddit` | – | Scrape today's Reddit mentions across watched subreddits. |
 
 > `/api/admin/*` and `/api/validation/run-snapshot` are unauthenticated in Phase 1 for local-dev convenience. Lock them down before deploying anywhere public.
 

@@ -29,6 +29,10 @@ class Stock(Base):
     market_cap: Mapped[float | None] = mapped_column(Float, nullable=True)
     fundamentals_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Pipe-separated list of how WSB / r/stocks users refer to this stock,
+    # e.g. "NOVO|NVO|NovoNordisk" for NOVO-B.CO. Used for mention counting.
+    wsb_aliases: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
     prices: Mapped[list["PriceHistory"]] = relationship(back_populates="stock", cascade="all, delete-orphan")
     snapshots: Mapped[list["DailyScoreSnapshot"]] = relationship(back_populates="stock", cascade="all, delete-orphan")
 
@@ -58,3 +62,21 @@ class FxRate(Base):
     currency: Mapped[str] = mapped_column(String(3), index=True)
     rate_date: Mapped[date] = mapped_column(Date, index=True)
     to_dkk: Mapped[float] = mapped_column(Float)
+
+
+class RedditMentionCount(Base):
+    """Daily mention counts per stock across watched subreddits.
+
+    `count` is the total number of posts (title or selftext) on `mention_date`
+    that contained any of the stock's WSB aliases. `subreddits_seen` is a
+    pipe-separated list of subreddits that contributed at least one mention.
+    """
+
+    __tablename__ = "reddit_mention_counts"
+    __table_args__ = (UniqueConstraint("stock_id", "mention_date", name="uq_reddit_stock_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="CASCADE"), index=True)
+    mention_date: Mapped[date] = mapped_column(Date, index=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
+    subreddits_seen: Mapped[str | None] = mapped_column(String(200), nullable=True)
