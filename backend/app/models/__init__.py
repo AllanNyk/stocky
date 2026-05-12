@@ -10,6 +10,7 @@ from app.models.stock import (
     PriceHistory,
     RedditMentionCount,
     Stock,
+    StockTwitsActivity,
 )
 from app.models.trading import Position, Trade, TradeSide
 from app.models.user import User
@@ -32,6 +33,7 @@ __all__ = [
     "PriceHistory",
     "RedditMentionCount",
     "Stock",
+    "StockTwitsActivity",
     "Trade",
     "TradeSide",
     "User",

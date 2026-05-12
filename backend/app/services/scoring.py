@@ -19,23 +19,28 @@ from app.services.signals.momentum import Momentum50dSignal
 from app.services.signals.news_sentiment import NewsSentimentSignal
 from app.services.signals.pe_percentile import PEPercentileSignal
 from app.services.signals.percentile_52w import Percentile52wSignal
+from app.services.signals.social_sentiment import SocialSentimentSignal
 from app.services.signals.volume_momentum import VolumeMomentumSignal
 from app.services.signals.wsb_mentions import WsbMentionDeltaSignal
 
 # Weights sum to 1.0. Tuning rationale:
 # - Pure-price signals (momentum_50d, percentile_52w) carry most weight because they
 #   have full historical backdata AND high confidence on every stock in the universe.
-# - Alt-data signals (WSB, news, geopolitical, insider) add breadth but are noisier.
+# - Alt-data signals (social/news/gdelt/insider) add breadth but are noisier.
 # - Volume momentum is direction-agnostic so it gets the lowest weight.
+# - WSB stays at a small weight as a dormant slot — currently returns confidence 0
+#   because Reddit's Responsible Builder Policy gates personal-use access; if access
+#   reopens it will re-activate without further code changes.
 SIGNAL_WEIGHTS: dict[str, float] = {
-    "pe_percentile": 0.15,
-    "momentum_50d": 0.18,
+    "pe_percentile": 0.13,
+    "momentum_50d": 0.17,
     "percentile_52w": 0.12,
     "volume_momentum": 0.08,
-    "wsb_mention_delta": 0.10,
+    "wsb_mention_delta": 0.04,
     "news_sentiment": 0.13,
     "geopolitical_tone": 0.12,
-    "insider_activity": 0.12,
+    "insider_activity": 0.11,
+    "social_sentiment": 0.10,
 }
 
 SIGNALS = [
@@ -47,6 +52,7 @@ SIGNALS = [
     NewsSentimentSignal(),
     GeopoliticalToneSignal(),
     InsiderActivitySignal(),
+    SocialSentimentSignal(),
 ]
 
 

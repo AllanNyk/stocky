@@ -15,6 +15,7 @@ from app.services.ingestion import refresh_all_prices
 from app.services.insider import refresh_insider_activity
 from app.services.news_sentiment import refresh_news_sentiment
 from app.services.reddit import refresh_reddit_mentions
+from app.services.stocktwits import refresh_stocktwits_activity
 
 
 async def require_admin(request: Request) -> None:
@@ -63,3 +64,9 @@ def trigger_gdelt_refresh(db: Session = Depends(get_db)) -> dict:
 def trigger_insider_refresh(db: Session = Depends(get_db)) -> dict:
     """Pull 30-day insider transactions per US stock from Finnhub."""
     return refresh_insider_activity(db)
+
+
+@router.post("/refresh-stocktwits")
+def trigger_stocktwits_refresh(db: Session = Depends(get_db)) -> dict:
+    """Pull StockTwits message streams per US stock; tally bullish/bearish."""
+    return refresh_stocktwits_activity(db)

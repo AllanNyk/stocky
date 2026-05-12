@@ -103,6 +103,27 @@ class CountryToneScore(Base):
     article_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class StockTwitsActivity(Base):
+    """Daily snapshot of StockTwits per-symbol message stream.
+
+    StockTwits messages can be user-tagged Bullish, Bearish, or untagged. We count
+    each category separately so the signal can weight tagged-only messages for
+    direction while also seeing total message volume as an attention proxy.
+    """
+
+    __tablename__ = "stocktwits_activity"
+    __table_args__ = (UniqueConstraint("stock_id", "score_date", name="uq_stocktwits_stock_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="CASCADE"), index=True)
+    score_date: Mapped[date] = mapped_column(Date, index=True)
+    total_messages: Mapped[int] = mapped_column(Integer, default=0)
+    bullish_count: Mapped[int] = mapped_column(Integer, default=0)
+    bearish_count: Mapped[int] = mapped_column(Integer, default=0)
+    top_message: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    top_message_sentiment: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+
 class InsiderActivityScore(Base):
     """30-day aggregate of insider transactions per stock from Finnhub.
 
