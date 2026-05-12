@@ -126,6 +126,28 @@ export interface MoverRow {
   last_close_dkk: number | null;
 }
 
+export type AlertCondition = "score_crosses_above" | "score_crosses_below";
+
+export interface AlertRule {
+  id: number;
+  ticker: string;
+  name: string;
+  condition: AlertCondition;
+  threshold: number;
+  active: boolean;
+  last_observed_score: number | null;
+  created_at: string;
+}
+
+export interface Notification {
+  id: number;
+  title: string;
+  body: string;
+  ticker: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface MoversResponse {
   lookback_days: number;
   to_date: string;
@@ -216,6 +238,23 @@ export const api = {
     request<RecentHeadline[]>(`/api/stocks/${encodeURIComponent(ticker)}/recent-headlines?days=${days}&limit=${limit}`),
   movers: (lookbackDays = 1, limit = 10) =>
     request<MoversResponse>(`/api/movers?lookback_days=${lookbackDays}&limit=${limit}`),
+
+  listAlerts: () => request<AlertRule[]>("/api/alerts", { auth: true }),
+  createAlert: (ticker: string, condition: AlertCondition, threshold: number) =>
+    request<AlertRule>("/api/alerts", {
+      method: "POST",
+      body: { ticker, condition, threshold },
+      auth: true,
+    }),
+  deleteAlert: (id: number) =>
+    request<void>(`/api/alerts/${id}`, { method: "DELETE", auth: true }),
+
+  notifications: (unreadOnly = false) =>
+    request<Notification[]>(`/api/notifications?unread_only=${unreadOnly}`, { auth: true }),
+  markNotificationRead: (id: number) =>
+    request<void>(`/api/notifications/${id}/read`, { method: "POST", auth: true }),
+  markAllNotificationsRead: () =>
+    request<void>("/api/notifications/read-all", { method: "POST", auth: true }),
   allScores: () => request<ScoreResponse[]>("/api/scores"),
 
   register: (email: string, password: string, display_name: string) =>

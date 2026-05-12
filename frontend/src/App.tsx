@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import { WatchlistProvider } from "./watchlist";
+import { NotificationsProvider } from "./notifications";
+import { NotificationBell } from "./components/NotificationBell";
 import { LoginPage } from "./pages/LoginPage";
 import { MarketPage } from "./pages/MarketPage";
 import { MoversPage } from "./pages/MoversPage";
@@ -24,6 +26,9 @@ function Shell({ children }: { children: ReactNode }) {
           <NavLink to="/validation" className={({ isActive }) => (isActive ? "active" : "")}>Model check</NavLink>
         </nav>
         <div style={{ fontSize: 12, color: "var(--muted)" }}>
+          <div style={{ marginBottom: 12 }}>
+            <NotificationBell />
+          </div>
           <div>{me?.display_name}</div>
           <div style={{ marginTop: 4 }}>{me?.email}</div>
           <button className="secondary" style={{ marginTop: 12, width: "100%" }} onClick={logout}>
@@ -62,9 +67,11 @@ export default function App() {
   return (
     <AuthProvider>
       <WatchlistProvider>
-        <BrowserRouter>
-          <RouterRoot />
-        </BrowserRouter>
+        <NotificationsProvider>
+          <BrowserRouter>
+            <RouterRoot />
+          </BrowserRouter>
+        </NotificationsProvider>
       </WatchlistProvider>
     </AuthProvider>
   );

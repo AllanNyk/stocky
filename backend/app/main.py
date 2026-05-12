@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.db import Base, SessionLocal, apply_additive_migrations, engine
 from app import models  # noqa: F401  ensures model classes register with Base.metadata
-from app.routers import admin, auth, movers, portfolio, stocks, validation, watchlist
+from app.routers import admin, alerts, auth, movers, portfolio, stocks, validation, watchlist
 from app.scheduler import build_scheduler
 from app.seeds.universe import seed_universe
 
@@ -43,6 +43,7 @@ app.include_router(validation.router)
 app.include_router(portfolio.router)
 app.include_router(watchlist.router)
 app.include_router(movers.router)
+app.include_router(alerts.router)
 
 
 @app.get("/api/health")

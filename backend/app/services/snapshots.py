@@ -25,6 +25,7 @@ from app.models import (
     PriceHistory,
     Stock,
 )
+from app.services.alerts import check_and_fire_alerts
 from app.services.scoring import score_stock
 
 log = getLogger(__name__)
@@ -122,8 +123,15 @@ def _run_snapshot_for_date(db: Session, snap_date: date, *, historical: bool) ->
 
 
 def run_daily_snapshot(db: Session, snapshot_date: date | None = None) -> dict:
-    """Compute + persist today's snapshot using live signals. Idempotent."""
-    return _run_snapshot_for_date(db, snapshot_date or date.today(), historical=False)
+    """Compute + persist today's snapshot using live signals, then evaluate alerts."""
+    snap_date = snapshot_date or date.today()
+    result = _run_snapshot_for_date(db, snap_date, historical=False)
+    try:
+        result["alerts"] = check_and_fire_alerts(db, on_date=snap_date)
+    except Exception as e:
+        log.exception("alert evaluation failed: %s", e)
+        result["alerts"] = {"error": str(e)}
+    return result
 
 
 def run_backtest(db: Session, days: int = 90) -> dict:

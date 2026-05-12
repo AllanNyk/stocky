@@ -6,6 +6,7 @@ import { fmtDkk, fmtNum, fmtPct, scoreColor, tierColor, tierLabel } from "../for
 import { TradePanel } from "../components/TradePanel";
 import { RangeSelector, type RangeKey, rangeToDays } from "../components/RangeSelector";
 import { StarButton } from "../components/StarButton";
+import { AlertsPanel } from "../components/AlertsPanel";
 
 /** Maps VADER compound score in [-1, +1] to a dot color. */
 function sentimentColor(compound: number): string {
@@ -359,6 +360,8 @@ export function StockDetailPage() {
           </div>
 
           <TradePanel stock={stock} onTrade={() => setRefreshKey((k) => k + 1)} />
+
+          <AlertsPanel ticker={stock.ticker} />
         </div>
       </div>
     </div>

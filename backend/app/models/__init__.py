@@ -1,3 +1,4 @@
+from app.models.alerts import AlertCondition, AlertRule, Notification
 from app.models.score import DailyScoreSnapshot, ModelPortfolioPick, PickStrategy
 from app.models.stock import (
     CountryToneScore,
@@ -15,12 +16,15 @@ from app.models.user import User
 from app.models.watchlist import WatchlistEntry
 
 __all__ = [
+    "AlertCondition",
+    "AlertRule",
     "CountryToneScore",
     "DailyScoreSnapshot",
     "FxRate",
     "InsiderActivityScore",
     "ModelPortfolioPick",
     "NewsHeadline",
+    "Notification",
     "NewsSentimentScore",
     "PickStrategy",
     "PlutoTier",
