@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import DailyScoreSnapshot, NewsSentimentScore, PriceHistory, Stock
+from app.models import DailyScoreSnapshot, NewsHeadline, NewsSentimentScore, PriceHistory, Stock
 from app.services.scoring import score_stock
 
 router = APIRouter(prefix="/api", tags=["stocks"])
@@ -141,6 +141,31 @@ def stock_score_history(ticker: str, days: int = 90, db: Session = Depends(get_d
             "date": r.snapshot_date.isoformat(),
             "composite_score": round(r.composite_score, 2),
             "price_at_snapshot_dkk": r.price_at_snapshot_dkk,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/stocks/{ticker}/recent-headlines")
+def stock_recent_headlines(ticker: str, days: int = 14, limit: int = 30, db: Session = Depends(get_db)) -> list[dict]:
+    """Individual headlines the news_sentiment filter kept, newest first."""
+    stock = db.query(Stock).filter(Stock.ticker == ticker).one_or_none()
+    if stock is None:
+        raise HTTPException(404, f"unknown ticker {ticker!r}")
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    rows = (
+        db.query(NewsHeadline)
+        .filter(NewsHeadline.stock_id == stock.id, NewsHeadline.published_at >= cutoff)
+        .order_by(NewsHeadline.published_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "published_at": r.published_at.isoformat(),
+            "title": r.title,
+            "link": r.link if not r.link.startswith("stocky://") else None,
+            "compound_score": round(r.compound_score, 3),
         }
         for r in rows
     ]

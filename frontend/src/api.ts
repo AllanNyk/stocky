@@ -97,6 +97,13 @@ export interface ScoreHistoryPoint {
   price_at_snapshot_dkk: number;
 }
 
+export interface RecentHeadline {
+  published_at: string;
+  title: string;
+  link: string | null;
+  compound_score: number;
+}
+
 export interface NewsTimelinePoint {
   date: string;
   mean_compound: number;
@@ -205,6 +212,8 @@ export const api = {
     request<ScoreHistoryPoint[]>(`/api/stocks/${encodeURIComponent(ticker)}/score-history?days=${days}`),
   stockNewsTimeline: (ticker: string, days = 90) =>
     request<NewsTimelinePoint[]>(`/api/stocks/${encodeURIComponent(ticker)}/news-timeline?days=${days}`),
+  stockRecentHeadlines: (ticker: string, days = 14, limit = 30) =>
+    request<RecentHeadline[]>(`/api/stocks/${encodeURIComponent(ticker)}/recent-headlines?days=${days}&limit=${limit}`),
   movers: (lookbackDays = 1, limit = 10) =>
     request<MoversResponse>(`/api/movers?lookback_days=${lookbackDays}&limit=${limit}`),
   allScores: () => request<ScoreResponse[]>("/api/scores"),

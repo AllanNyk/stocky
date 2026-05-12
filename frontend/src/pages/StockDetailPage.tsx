@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api, type NewsTimelinePoint, type PriceBar, type ScoreHistoryPoint, type ScoreResponse, type StockRow } from "../api";
+import { api, type NewsTimelinePoint, type PriceBar, type RecentHeadline, type ScoreHistoryPoint, type ScoreResponse, type StockRow } from "../api";
 import { fmtDkk, fmtNum, fmtPct, scoreColor, tierColor, tierLabel } from "../format";
 import { TradePanel } from "../components/TradePanel";
 import { RangeSelector, type RangeKey, rangeToDays } from "../components/RangeSelector";
@@ -87,6 +87,7 @@ export function StockDetailPage() {
   const [score, setScore] = useState<ScoreResponse | null>(null);
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryPoint[]>([]);
   const [news, setNews] = useState<NewsTimelinePoint[]>([]);
+  const [headlines, setHeadlines] = useState<RecentHeadline[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,15 +125,17 @@ export function StockDetailPage() {
       setChartLoading(true);
       const days = rangeToDays(range);
       try {
-        const [h, sh, n] = await Promise.all([
+        const [h, sh, n, hl] = await Promise.all([
           api.stockHistory(ticker, days),
           api.stockScoreHistory(ticker, days),
           api.stockNewsTimeline(ticker, days),
+          api.stockRecentHeadlines(ticker, Math.min(days, 30), 25),
         ]);
         if (cancelled) return;
         setHistory(h);
         setScoreHistory(sh);
         setNews(n);
+        setHeadlines(hl);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -224,6 +227,52 @@ export function StockDetailPage() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+
+          <div className="panel">
+            <h2 className="h2">
+              Recent headlines{" "}
+              <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>
+                · last {Math.min(rangeToDays(range), 30)} days · {headlines.length} kept after ticker-mention filter
+              </span>
+            </h2>
+            {headlines.length === 0 ? (
+              <div className="notice">No headlines for this range yet. The daily news scrape runs at 23:07 CET.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {headlines.map((h) => (
+                  <div
+                    key={`${h.published_at}-${h.title}`}
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "flex-start",
+                      padding: "8px 10px",
+                      borderLeft: `3px solid ${sentimentColor(h.compound_score)}`,
+                      background: "var(--panel-2)",
+                      borderRadius: 4,
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ width: 44, color: sentimentColor(h.compound_score), fontWeight: 600, fontSize: 12, paddingTop: 1 }}>
+                      {h.compound_score >= 0 ? "+" : ""}{h.compound_score.toFixed(2)}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ lineHeight: 1.4 }}>
+                        {h.link ? (
+                          <a href={h.link} target="_blank" rel="noopener noreferrer">{h.title}</a>
+                        ) : (
+                          h.title
+                        )}
+                      </div>
+                      <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                        {new Date(h.published_at).toLocaleString("da-DK")}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

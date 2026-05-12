@@ -103,6 +103,25 @@ class CountryToneScore(Base):
     article_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class NewsHeadline(Base):
+    """Individual news headline that passed our 'mentions the ticker' filter.
+
+    Stored so the stock-detail page can surface the actual articles driving
+    today's news_sentiment score, and so future analytics can correlate
+    specific headlines with price moves.
+    """
+
+    __tablename__ = "news_headlines"
+    __table_args__ = (UniqueConstraint("stock_id", "link", name="uq_news_headline_link"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="CASCADE"), index=True)
+    published_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    title: Mapped[str] = mapped_column(String(500))
+    link: Mapped[str] = mapped_column(String(800))
+    compound_score: Mapped[float] = mapped_column(Float)
+
+
 class NewsSentimentScore(Base):
     """Daily aggregate of VADER sentiment over per-ticker news headlines.
 
