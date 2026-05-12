@@ -10,6 +10,8 @@ A paper-trading web app with a transparent prediction score and continuous forwa
 - Composite prediction score (0–100) from rule-based signals:
   - P/E percentile vs sector peers (cheap = bullish).
   - 50-day price momentum vs SMA.
+  - 52-week percentile (where today sits in the 1y high-low range).
+  - Volume momentum (5d avg vs 50d avg — attention amplifier, direction-agnostic).
   - WSB mention delta — today's count on r/wallstreetbets + r/stocks + r/investing vs 7-day baseline (attention spike = high score).
   - News sentiment — VADER compound score over per-ticker headlines from yfinance, pooled across the last 5 days.
   - Geopolitical tone — GDELT 2.0 country-level mean news tone for the stock's home country (catches wars, crises, policy shocks).

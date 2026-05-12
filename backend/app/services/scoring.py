@@ -17,19 +17,31 @@ from app.services.signals.geopolitical_tone import GeopoliticalToneSignal
 from app.services.signals.momentum import Momentum50dSignal
 from app.services.signals.news_sentiment import NewsSentimentSignal
 from app.services.signals.pe_percentile import PEPercentileSignal
+from app.services.signals.percentile_52w import Percentile52wSignal
+from app.services.signals.volume_momentum import VolumeMomentumSignal
 from app.services.signals.wsb_mentions import WsbMentionDeltaSignal
 
+# Weights sum to 1.0. Tuning rationale:
+# - Pure-price signals (momentum_50d, percentile_52w) carry most weight because they
+#   have full historical backdata AND high confidence on every stock in the universe.
+# - Alt-data signals (WSB, news, geopolitical) add breadth but are noisier; lower weight.
+# - Volume momentum is direction-agnostic so it gets the lowest weight — it's a
+#   "something's happening" amplifier rather than a directional bet.
 SIGNAL_WEIGHTS: dict[str, float] = {
-    "pe_percentile": 0.20,
-    "momentum_50d": 0.30,
-    "wsb_mention_delta": 0.15,
-    "news_sentiment": 0.20,
+    "pe_percentile": 0.15,
+    "momentum_50d": 0.20,
+    "percentile_52w": 0.15,
+    "volume_momentum": 0.10,
+    "wsb_mention_delta": 0.10,
+    "news_sentiment": 0.15,
     "geopolitical_tone": 0.15,
 }
 
 SIGNALS = [
     PEPercentileSignal(),
     Momentum50dSignal(),
+    Percentile52wSignal(),
+    VolumeMomentumSignal(),
     WsbMentionDeltaSignal(),
     NewsSentimentSignal(),
     GeopoliticalToneSignal(),
