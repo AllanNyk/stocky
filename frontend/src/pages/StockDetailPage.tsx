@@ -5,6 +5,7 @@ import { api, type NewsTimelinePoint, type PriceBar, type ScoreHistoryPoint, typ
 import { fmtDkk, fmtNum, fmtPct, scoreColor, tierColor, tierLabel } from "../format";
 import { TradePanel } from "../components/TradePanel";
 import { RangeSelector, type RangeKey, rangeToDays } from "../components/RangeSelector";
+import { StarButton } from "../components/StarButton";
 
 /** Maps VADER compound score in [-1, +1] to a dot color. */
 function sentimentColor(compound: number): string {
@@ -166,7 +167,10 @@ export function StockDetailPage() {
       <div style={{ marginBottom: 12 }}>
         <Link to="/market" className="muted">← Market</Link>
       </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 4 }}>
+        <span style={{ display: "inline-flex", alignItems: "center" }}>
+          <StarButton ticker={stock.ticker} size={26} />
+        </span>
         <h1 className="page-title" style={{ margin: 0 }}>{stock.ticker}</h1>
         <div className="muted">{stock.name}</div>
       </div>

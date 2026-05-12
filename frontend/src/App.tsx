@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
+import { WatchlistProvider } from "./watchlist";
 import { LoginPage } from "./pages/LoginPage";
 import { MarketPage } from "./pages/MarketPage";
 import { StockDetailPage } from "./pages/StockDetailPage";
@@ -54,9 +55,11 @@ function RouterRoot() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <RouterRoot />
-      </BrowserRouter>
+      <WatchlistProvider>
+        <BrowserRouter>
+          <RouterRoot />
+        </BrowserRouter>
+      </WatchlistProvider>
     </AuthProvider>
   );
 }

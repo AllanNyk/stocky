@@ -10,6 +10,7 @@ from app.models.stock import (
 )
 from app.models.trading import Position, Trade, TradeSide
 from app.models.user import User
+from app.models.watchlist import WatchlistEntry
 
 __all__ = [
     "CountryToneScore",
@@ -26,4 +27,5 @@ __all__ = [
     "Trade",
     "TradeSide",
     "User",
+    "WatchlistEntry",
 ]

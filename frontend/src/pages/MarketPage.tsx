@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type ScoreResponse, type StockRow } from "../api";
 import { fmtNum, fmtPct, scoreColor, tierColor, tierLabel } from "../format";
+import { StarButton } from "../components/StarButton";
+import { useWatchlist } from "../watchlist";
 
 type SortKey = "ticker" | "score" | "last" | "change" | "tier";
 type TierFilter = "all" | "commission_free" | "standard_fee";
@@ -17,6 +19,7 @@ const COUNTRY_LABEL: Record<CountryFilter, string> = {
 };
 
 export function MarketPage() {
+  const { watched } = useWatchlist();
   const [stocks, setStocks] = useState<StockRow[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -28,6 +31,7 @@ export function MarketPage() {
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
   const [countryFilter, setCountryFilter] = useState<CountryFilter>("all");
+  const [watchedOnly, setWatchedOnly] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +56,7 @@ export function MarketPage() {
   const filteredAndSorted = useMemo(() => {
     const needle = search.trim().toLowerCase();
     let rows = stocks.filter((s) => {
+      if (watchedOnly && !watched.has(s.ticker)) return false;
       if (tierFilter !== "all" && s.pluto_tier !== tierFilter) return false;
       if (countryFilter !== "all" && s.country_code !== countryFilter) return false;
       if (needle && !s.ticker.toLowerCase().includes(needle) && !s.name.toLowerCase().includes(needle)) {
@@ -70,7 +75,7 @@ export function MarketPage() {
       }
     });
     return rows;
-  }, [stocks, scores, sortKey, sortDir, search, tierFilter, countryFilter]);
+  }, [stocks, scores, sortKey, sortDir, search, tierFilter, countryFilter, watchedOnly, watched]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -86,9 +91,10 @@ export function MarketPage() {
     setSearch("");
     setTierFilter("all");
     setCountryFilter("all");
+    setWatchedOnly(false);
   }
 
-  const hasFilters = search !== "" || tierFilter !== "all" || countryFilter !== "all";
+  const hasFilters = search !== "" || tierFilter !== "all" || countryFilter !== "all" || watchedOnly;
 
   if (loading) return <div className="notice">Loading market…</div>;
   if (error) return <div className="error">Error: {error}</div>;
@@ -121,6 +127,15 @@ export function MarketPage() {
               ))}
             </select>
           </label>
+          <label className="row" style={{ gap: 6, fontSize: 13, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={watchedOnly}
+              onChange={(e) => setWatchedOnly(e.target.checked)}
+              style={{ width: 16, height: 16, margin: 0 }}
+            />
+            <span>★ Watched only ({watched.size})</span>
+          </label>
           {hasFilters && (
             <button className="secondary" onClick={clearFilters} style={{ fontSize: 12, padding: "4px 10px" }}>
               Clear
@@ -145,6 +160,7 @@ export function MarketPage() {
           <table>
             <thead>
               <tr>
+                <th style={{ width: 32 }}></th>
                 <th onClick={() => toggleSort("ticker")} style={{ cursor: "pointer" }}>Ticker{sortIndicator("ticker")}</th>
                 <th>Name</th>
                 <th onClick={() => toggleSort("tier")} style={{ cursor: "pointer" }}>Pluto{sortIndicator("tier")}</th>
@@ -159,6 +175,9 @@ export function MarketPage() {
                 const score = scores[s.ticker];
                 return (
                   <tr key={s.ticker}>
+                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "center", padding: "0 4px" }}>
+                      <StarButton ticker={s.ticker} />
+                    </td>
                     <td>
                       <Link to={`/stocks/${encodeURIComponent(s.ticker)}`} style={{ fontWeight: 600 }}>
                         {s.ticker}

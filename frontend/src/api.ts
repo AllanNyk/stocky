@@ -215,4 +215,16 @@ export const api = {
 
   refreshPrices: () =>
     request<Record<string, number>>("/api/admin/refresh-prices", { method: "POST" }),
+
+  watchlist: () => request<string[]>("/api/watchlist", { auth: true }),
+  watchAdd: (ticker: string) =>
+    request<{ ticker: string; already_watched: boolean }>(
+      `/api/watchlist/${encodeURIComponent(ticker)}`,
+      { method: "POST", auth: true },
+    ),
+  watchRemove: (ticker: string) =>
+    request<void>(`/api/watchlist/${encodeURIComponent(ticker)}`, {
+      method: "DELETE",
+      auth: true,
+    }),
 };
