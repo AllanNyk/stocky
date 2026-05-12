@@ -80,3 +80,23 @@ class RedditMentionCount(Base):
     mention_date: Mapped[date] = mapped_column(Date, index=True)
     count: Mapped[int] = mapped_column(Integer, default=0)
     subreddits_seen: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class NewsSentimentScore(Base):
+    """Daily aggregate of VADER sentiment over per-ticker news headlines.
+
+    `mean_compound` is the average VADER compound score (in [-1, +1]) across
+    `sample_size` headlines from the last 24h. `top_headline` captures the
+    single most-extreme headline so the UI can show what's driving the signal.
+    """
+
+    __tablename__ = "news_sentiment_scores"
+    __table_args__ = (UniqueConstraint("stock_id", "score_date", name="uq_news_stock_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="CASCADE"), index=True)
+    score_date: Mapped[date] = mapped_column(Date, index=True)
+    mean_compound: Mapped[float] = mapped_column(Float, default=0.0)
+    sample_size: Mapped[int] = mapped_column(Integer, default=0)
+    top_headline: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    top_headline_score: Mapped[float | None] = mapped_column(Float, nullable=True)

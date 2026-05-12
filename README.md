@@ -11,6 +11,7 @@ A paper-trading web app with a transparent prediction score and continuous forwa
   - P/E percentile vs sector peers (cheap = bullish).
   - 50-day price momentum vs SMA.
   - WSB mention delta — today's count on r/wallstreetbets + r/stocks + r/investing vs 7-day baseline (attention spike = high score).
+  - News sentiment — VADER compound score over per-ticker headlines from yfinance, pooled across the last 5 days.
 - **Continuous forward-testing**: each day's snapshot freezes scores + entry prices; realized 1d / 7d / 30d / 90d returns are computed on read. Two virtual portfolios run side-by-side:
   - Top-5 by composite score, equal weight.
   - Every stock with score ≥ 70, equal weight.
@@ -75,6 +76,7 @@ To enable:
 
 - `23:00` Europe/Copenhagen — refresh prices + FX.
 - `23:05` Europe/Copenhagen — scrape Reddit mentions (skipped if creds missing).
+- `23:07` Europe/Copenhagen — refresh news sentiment.
 - `23:10` Europe/Copenhagen — run score snapshot (locks today's composites and updates the virtual portfolios).
 
 ## Endpoint map
@@ -100,6 +102,7 @@ To enable:
 | POST | `/api/admin/refresh-fx` | – | Pull DKK FX rates. |
 | POST | `/api/admin/refresh-prices?period=1y` | – | Pull OHLCV for every ticker. |
 | POST | `/api/admin/refresh-reddit` | – | Scrape today's Reddit mentions across watched subreddits. |
+| POST | `/api/admin/refresh-news` | – | Pull per-ticker news via yfinance, score with VADER. |
 
 > `/api/admin/*` and `/api/validation/run-snapshot` are unauthenticated in Phase 1 for local-dev convenience. Lock them down before deploying anywhere public.
 

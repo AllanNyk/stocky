@@ -13,6 +13,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.db import SessionLocal
 from app.services.ingestion import refresh_all_prices
+from app.services.news_sentiment import refresh_news_sentiment
 from app.services.reddit import refresh_reddit_mentions
 from app.services.snapshots import run_daily_snapshot
 
@@ -38,6 +39,16 @@ def _refresh_reddit_job() -> None:
             log.exception("reddit refresh failed: %s", e)
 
 
+def _refresh_news_job() -> None:
+    log.info("scheduled job: refresh_news_sentiment")
+    with SessionLocal() as db:
+        try:
+            result = refresh_news_sentiment(db)
+            log.info("news refresh complete: %s", result)
+        except Exception as e:
+            log.exception("news refresh failed: %s", e)
+
+
 def _daily_snapshot_job() -> None:
     log.info("scheduled job: run_daily_snapshot")
     with SessionLocal() as db:
@@ -54,6 +65,8 @@ def build_scheduler() -> BackgroundScheduler:
     sched.add_job(_refresh_prices_job, CronTrigger(hour=23, minute=0), id="refresh_prices", replace_existing=True)
     # Reddit mention scrape — independent of market timing; pick a slot before snapshot.
     sched.add_job(_refresh_reddit_job, CronTrigger(hour=23, minute=5), id="refresh_reddit", replace_existing=True)
-    # Snapshot 10 minutes later so prices + reddit have landed.
+    # News sentiment refresh — also before snapshot.
+    sched.add_job(_refresh_news_job, CronTrigger(hour=23, minute=7), id="refresh_news", replace_existing=True)
+    # Snapshot 10 minutes later so prices + reddit + news have landed.
     sched.add_job(_daily_snapshot_job, CronTrigger(hour=23, minute=10), id="daily_snapshot", replace_existing=True)
     return sched

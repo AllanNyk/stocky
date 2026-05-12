@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.services.fx import refresh_fx_rates
 from app.services.ingestion import refresh_all_prices
+from app.services.news_sentiment import refresh_news_sentiment
 from app.services.reddit import refresh_reddit_mentions
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -28,3 +29,9 @@ def trigger_price_refresh(period: str = "1y", db: Session = Depends(get_db)) -> 
 def trigger_reddit_refresh(db: Session = Depends(get_db)) -> dict:
     """Pull today's Reddit mention counts across r/wallstreetbets, r/stocks, r/investing."""
     return refresh_reddit_mentions(db)
+
+
+@router.post("/refresh-news")
+def trigger_news_refresh(db: Session = Depends(get_db)) -> dict:
+    """Pull per-ticker headlines via yfinance, run VADER, persist daily aggregates."""
+    return refresh_news_sentiment(db)

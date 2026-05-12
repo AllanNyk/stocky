@@ -14,19 +14,22 @@ from sqlalchemy.orm import Session
 from app.models import Stock
 from app.services.signals.base import SignalResult
 from app.services.signals.momentum import Momentum50dSignal
+from app.services.signals.news_sentiment import NewsSentimentSignal
 from app.services.signals.pe_percentile import PEPercentileSignal
 from app.services.signals.wsb_mentions import WsbMentionDeltaSignal
 
 SIGNAL_WEIGHTS: dict[str, float] = {
-    "pe_percentile": 0.35,
-    "momentum_50d": 0.40,
-    "wsb_mention_delta": 0.25,
+    "pe_percentile": 0.25,
+    "momentum_50d": 0.35,
+    "wsb_mention_delta": 0.20,
+    "news_sentiment": 0.20,
 }
 
 SIGNALS = [
     PEPercentileSignal(),
     Momentum50dSignal(),
     WsbMentionDeltaSignal(),
+    NewsSentimentSignal(),
 ]
 
 
