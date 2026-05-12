@@ -105,6 +105,31 @@ export interface NewsTimelinePoint {
   top_headline_score: number | null;
 }
 
+export interface MoverRow {
+  ticker: string;
+  name: string;
+  sector: string | null;
+  pluto_tier: string;
+  country_code: string | null;
+  score_now: number;
+  score_then: number | null;
+  change: number | null;
+  snapshot_date_now: string;
+  snapshot_date_then: string | null;
+  last_close_dkk: number | null;
+}
+
+export interface MoversResponse {
+  lookback_days: number;
+  to_date: string;
+  from_date: string;
+  comparable_count: number;
+  total_count: number;
+  top_picks: MoverRow[];
+  risers: MoverRow[];
+  fallers: MoverRow[];
+}
+
 export interface Position {
   ticker: string;
   name: string;
@@ -180,6 +205,8 @@ export const api = {
     request<ScoreHistoryPoint[]>(`/api/stocks/${encodeURIComponent(ticker)}/score-history?days=${days}`),
   stockNewsTimeline: (ticker: string, days = 90) =>
     request<NewsTimelinePoint[]>(`/api/stocks/${encodeURIComponent(ticker)}/news-timeline?days=${days}`),
+  movers: (lookbackDays = 1, limit = 10) =>
+    request<MoversResponse>(`/api/movers?lookback_days=${lookbackDays}&limit=${limit}`),
   allScores: () => request<ScoreResponse[]>("/api/scores"),
 
   register: (email: string, password: string, display_name: string) =>

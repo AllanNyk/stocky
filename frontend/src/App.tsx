@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./auth";
 import { WatchlistProvider } from "./watchlist";
 import { LoginPage } from "./pages/LoginPage";
 import { MarketPage } from "./pages/MarketPage";
+import { MoversPage } from "./pages/MoversPage";
 import { StockDetailPage } from "./pages/StockDetailPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { ValidationPage } from "./pages/ValidationPage";
@@ -16,6 +17,7 @@ function Shell({ children }: { children: ReactNode }) {
         <h1>STOCKY</h1>
         <nav className="nav" style={{ flex: 1 }}>
           <NavLink to="/market" className={({ isActive }) => (isActive ? "active" : "")}>Market</NavLink>
+          <NavLink to="/movers" className={({ isActive }) => (isActive ? "active" : "")}>Movers</NavLink>
           <NavLink to="/portfolio" className={({ isActive }) => (isActive ? "active" : "")}>Portfolio</NavLink>
           <NavLink to="/validation" className={({ isActive }) => (isActive ? "active" : "")}>Model check</NavLink>
         </nav>
@@ -44,6 +46,7 @@ function RouterRoot() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/market" element={<RequireAuth><MarketPage /></RequireAuth>} />
+      <Route path="/movers" element={<RequireAuth><MoversPage /></RequireAuth>} />
       <Route path="/stocks/:ticker" element={<RequireAuth><StockDetailPage /></RequireAuth>} />
       <Route path="/portfolio" element={<RequireAuth><PortfolioPage /></RequireAuth>} />
       <Route path="/validation" element={<RequireAuth><ValidationPage /></RequireAuth>} />
