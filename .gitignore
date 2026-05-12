@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# SQLite dev DB
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Project-local
+data/
+logs/
+
+# Claude Code local settings (per-user allowlist, not project state)
+.claude/
