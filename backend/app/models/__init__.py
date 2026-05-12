@@ -2,6 +2,7 @@ from app.models.score import DailyScoreSnapshot, ModelPortfolioPick, PickStrateg
 from app.models.stock import (
     CountryToneScore,
     FxRate,
+    InsiderActivityScore,
     NewsHeadline,
     NewsSentimentScore,
     PlutoTier,
@@ -17,6 +18,7 @@ __all__ = [
     "CountryToneScore",
     "DailyScoreSnapshot",
     "FxRate",
+    "InsiderActivityScore",
     "ModelPortfolioPick",
     "NewsHeadline",
     "NewsSentimentScore",

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.models import Stock
 from app.services.signals.base import SignalResult
 from app.services.signals.geopolitical_tone import GeopoliticalToneSignal
+from app.services.signals.insider_activity import InsiderActivitySignal
 from app.services.signals.momentum import Momentum50dSignal
 from app.services.signals.news_sentiment import NewsSentimentSignal
 from app.services.signals.pe_percentile import PEPercentileSignal
@@ -24,17 +25,17 @@ from app.services.signals.wsb_mentions import WsbMentionDeltaSignal
 # Weights sum to 1.0. Tuning rationale:
 # - Pure-price signals (momentum_50d, percentile_52w) carry most weight because they
 #   have full historical backdata AND high confidence on every stock in the universe.
-# - Alt-data signals (WSB, news, geopolitical) add breadth but are noisier; lower weight.
-# - Volume momentum is direction-agnostic so it gets the lowest weight — it's a
-#   "something's happening" amplifier rather than a directional bet.
+# - Alt-data signals (WSB, news, geopolitical, insider) add breadth but are noisier.
+# - Volume momentum is direction-agnostic so it gets the lowest weight.
 SIGNAL_WEIGHTS: dict[str, float] = {
     "pe_percentile": 0.15,
-    "momentum_50d": 0.20,
-    "percentile_52w": 0.15,
-    "volume_momentum": 0.10,
+    "momentum_50d": 0.18,
+    "percentile_52w": 0.12,
+    "volume_momentum": 0.08,
     "wsb_mention_delta": 0.10,
-    "news_sentiment": 0.15,
-    "geopolitical_tone": 0.15,
+    "news_sentiment": 0.13,
+    "geopolitical_tone": 0.12,
+    "insider_activity": 0.12,
 }
 
 SIGNALS = [
@@ -45,6 +46,7 @@ SIGNALS = [
     WsbMentionDeltaSignal(),
     NewsSentimentSignal(),
     GeopoliticalToneSignal(),
+    InsiderActivitySignal(),
 ]
 
 

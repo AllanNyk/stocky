@@ -103,6 +103,26 @@ class CountryToneScore(Base):
     article_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class InsiderActivityScore(Base):
+    """30-day aggregate of insider transactions per stock from Finnhub.
+
+    `net_share_change` is shares_bought - shares_sold (negative = net selling).
+    `net_value_usd` is the dollar value of that net change, signed.
+    `txn_count` is the total number of filings in the window — drives confidence.
+    """
+
+    __tablename__ = "insider_activity_scores"
+    __table_args__ = (UniqueConstraint("stock_id", "score_date", name="uq_insider_stock_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="CASCADE"), index=True)
+    score_date: Mapped[date] = mapped_column(Date, index=True)
+    window_days: Mapped[int] = mapped_column(Integer, default=30)
+    net_share_change: Mapped[float] = mapped_column(Float, default=0.0)
+    net_value_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    txn_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class NewsHeadline(Base):
     """Individual news headline that passed our 'mentions the ticker' filter.
 

@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     reddit_client_secret: str = ""
     reddit_user_agent: str = "stocky-local/0.1"
 
+    finnhub_api_key: str = ""
+    admin_token: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -22,6 +25,14 @@ class Settings(BaseSettings):
     @property
     def reddit_enabled(self) -> bool:
         return bool(self.reddit_client_id and self.reddit_client_secret)
+
+    @property
+    def finnhub_enabled(self) -> bool:
+        return bool(self.finnhub_api_key)
+
+    @property
+    def admin_enforced(self) -> bool:
+        return bool(self.admin_token)
 
 
 settings = Settings()
