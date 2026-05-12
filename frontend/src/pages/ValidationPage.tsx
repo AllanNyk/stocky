@@ -20,7 +20,8 @@ export function ValidationPage() {
   const [perf, setPerf] = useState<Record<string, StrategyPerformance>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState<"snapshot" | "backtest" | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -39,14 +40,30 @@ export function ValidationPage() {
   useEffect(() => { void load(); }, []);
 
   async function runSnapshot() {
-    setRunning(true);
+    setRunning("snapshot");
+    setStatusMsg(null);
     try {
-      await api.runSnapshot();
+      const r = await api.runSnapshot();
+      setStatusMsg(`Snapshot for ${r.snapshot_date} done (${r.scored} stocks scored).`);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setRunning(false);
+      setRunning(null);
+    }
+  }
+
+  async function runBacktest() {
+    setRunning("backtest");
+    setStatusMsg(null);
+    try {
+      const r = await api.runBacktest(90);
+      setStatusMsg(`Backtest replayed ${r.trading_days_processed} trading days (${r.start_date} → ${r.end_date}).`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRunning(null);
     }
   }
 
@@ -57,20 +74,36 @@ export function ValidationPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
         <h1 className="page-title" style={{ margin: 0 }}>Does the model work?</h1>
-        <button onClick={runSnapshot} disabled={running}>
-          {running ? "Running…" : "Run snapshot now"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="secondary" onClick={runBacktest} disabled={running !== null}>
+            {running === "backtest" ? "Backtesting…" : "Backtest last 90 days"}
+          </button>
+          <button onClick={runSnapshot} disabled={running !== null}>
+            {running === "snapshot" ? "Running…" : "Run snapshot now"}
+          </button>
+        </div>
       </div>
 
       {error && <div className="error" style={{ marginBottom: 12 }}>Error: {error}</div>}
+      {statusMsg && <div className="green" style={{ marginBottom: 12, fontSize: 13 }}>{statusMsg}</div>}
+
+      <div className="panel" style={{ borderLeft: "3px solid var(--accent)", background: "var(--panel-2)" }}>
+        <div className="muted" style={{ fontSize: 13 }}>
+          <b style={{ color: "var(--text)" }}>About backtest:</b> Replaying the last 90 days uses only signals that
+          have historical backdata — currently <code>momentum_50d</code>. P/E percentile and WSB mention-delta
+          return confidence&nbsp;0 for past dates (we don't have backdated fundamentals or Reddit data), so the
+          composite during backtest is effectively momentum-only. As real snapshots accumulate day by day, the
+          dashboard reflects the full three-signal composite.
+        </div>
+      </div>
 
       {!hasAnyPicks && (
         <div className="panel">
           <div className="notice">
-            No score snapshots have been taken yet. Click <b>Run snapshot now</b> above to take
-            today's snapshot. Forward returns will accumulate over the coming days as new prices come in.
+            No score snapshots yet. Click <b>Backtest last 90 days</b> to populate the dashboard with
+            historical data immediately, or <b>Run snapshot now</b> to take today's only.
           </div>
         </div>
       )}

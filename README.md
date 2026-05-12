@@ -96,6 +96,7 @@ To enable:
 | GET | `/api/validation/latest-picks` | – | Most-recent picks + realized return per strategy. |
 | GET | `/api/validation/performance` | – | Aggregate hit rate + avg return per horizon, per strategy. |
 | POST | `/api/validation/run-snapshot` | – | Manually run today's snapshot. |
+| POST | `/api/validation/run-backtest?days=90` | – | Replay last N days using only signals with backdata (momentum-only today). |
 | POST | `/api/admin/refresh-fx` | – | Pull DKK FX rates. |
 | POST | `/api/admin/refresh-prices?period=1y` | – | Pull OHLCV for every ticker. |
 | POST | `/api/admin/refresh-reddit` | – | Scrape today's Reddit mentions across watched subreddits. |

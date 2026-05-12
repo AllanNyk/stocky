@@ -1,17 +1,28 @@
-"""P/E percentile vs sector: low P/E relative to peers -> high score (cheap = bullish)."""
+"""P/E percentile vs sector: low P/E relative to peers -> high score (cheap = bullish).
+
+Historical caveat: the Stock table stores only current P/E, not historical. So when
+`as_of` is in the past, we'd be using *today's* P/E ratios to score a past date —
+that's lookahead. To stay honest, this signal returns confidence=0 for historical
+scoring; the composite then falls back to whatever signals do have backdata.
+"""
 
 from __future__ import annotations
+
+from datetime import date
 
 from sqlalchemy.orm import Session
 
 from app.models import Stock
-from app.services.signals.base import Signal, SignalResult, clip, empty_result
+from app.services.signals.base import SignalResult, clip, empty_result
 
 
 class PEPercentileSignal:
     name = "pe_percentile"
 
-    def compute(self, db: Session, stock: Stock) -> SignalResult:
+    def compute(self, db: Session, stock: Stock, as_of: date | None = None) -> SignalResult:
+        if as_of is not None:
+            return empty_result("no historical P/E backdata — confidence 0 for backtests")
+
         if stock.pe_ratio is None or stock.pe_ratio <= 0:
             return empty_result("no positive P/E available")
 

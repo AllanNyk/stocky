@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.models import PriceHistory, Stock
-from app.services.signals.base import Signal, SignalResult, clip, empty_result
+from app.services.signals.base import SignalResult, clip, empty_result
 
 LOOKBACK_DAYS = 50
 
@@ -14,14 +16,11 @@ LOOKBACK_DAYS = 50
 class Momentum50dSignal:
     name = "momentum_50d"
 
-    def compute(self, db: Session, stock: Stock) -> SignalResult:
-        rows = (
-            db.query(PriceHistory)
-            .filter(PriceHistory.stock_id == stock.id)
-            .order_by(desc(PriceHistory.trade_date))
-            .limit(LOOKBACK_DAYS)
-            .all()
-        )
+    def compute(self, db: Session, stock: Stock, as_of: date | None = None) -> SignalResult:
+        q = db.query(PriceHistory).filter(PriceHistory.stock_id == stock.id)
+        if as_of is not None:
+            q = q.filter(PriceHistory.trade_date <= as_of)
+        rows = q.order_by(desc(PriceHistory.trade_date)).limit(LOOKBACK_DAYS).all()
         if len(rows) < LOOKBACK_DAYS:
             return empty_result(f"only {len(rows)} days of history (need {LOOKBACK_DAYS})")
 

@@ -23,14 +23,16 @@ MIN_TOTAL_MENTIONS_FOR_CONFIDENCE = 5  # if 7d+today total < this, confidence is
 class WsbMentionDeltaSignal:
     name = "wsb_mention_delta"
 
-    def compute(self, db: Session, stock: Stock) -> SignalResult:
-        # Most recent mention row (today's if scraper ran, else most recent past).
-        latest = (
+    def compute(self, db: Session, stock: Stock, as_of: date | None = None) -> SignalResult:
+        # Reddit scraping only started today, so any `as_of` before our first scrape
+        # has no data. The query naturally handles that (returns None → empty_result).
+        q = (
             db.query(RedditMentionCount)
             .filter(RedditMentionCount.stock_id == stock.id)
-            .order_by(desc(RedditMentionCount.mention_date))
-            .first()
         )
+        if as_of is not None:
+            q = q.filter(RedditMentionCount.mention_date <= as_of)
+        latest = q.order_by(desc(RedditMentionCount.mention_date)).first()
         if latest is None:
             return empty_result("no reddit mention data yet — run /api/admin/refresh-reddit")
 

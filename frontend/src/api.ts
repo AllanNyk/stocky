@@ -187,7 +187,12 @@ export const api = {
 
   latestPicks: () => request<Record<string, LatestPick[]>>("/api/validation/latest-picks"),
   modelPerformance: () => request<Record<string, StrategyPerformance>>("/api/validation/performance"),
-  runSnapshot: () => request("/api/validation/run-snapshot", { method: "POST" }),
+  runSnapshot: () => request<{ snapshot_date: string; scored: number }>("/api/validation/run-snapshot", { method: "POST" }),
+  runBacktest: (days = 90) =>
+    request<{ start_date: string; end_date: string; trading_days_processed: number }>(
+      `/api/validation/run-backtest?days=${days}`,
+      { method: "POST" },
+    ),
 
   refreshPrices: () =>
     request<Record<string, number>>("/api/admin/refresh-prices", { method: "POST" }),

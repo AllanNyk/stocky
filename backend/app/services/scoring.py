@@ -7,6 +7,8 @@ the remaining weights re-normalize so the composite stays in [0, 100].
 
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy.orm import Session
 
 from app.models import Stock
@@ -28,11 +30,11 @@ SIGNALS = [
 ]
 
 
-def compute_signals(db: Session, stock: Stock) -> dict[str, SignalResult]:
+def compute_signals(db: Session, stock: Stock, as_of: date | None = None) -> dict[str, SignalResult]:
     out: dict[str, SignalResult] = {}
     for sig in SIGNALS:
         try:
-            out[sig.name] = sig.compute(db, stock)
+            out[sig.name] = sig.compute(db, stock, as_of=as_of)
         except Exception as e:
             out[sig.name] = SignalResult(score=50.0, confidence=0.0, evidence={}, error=str(e))
     return out
@@ -53,8 +55,8 @@ def composite_score(signals: dict[str, SignalResult]) -> float:
     return weighted / total_weight
 
 
-def score_stock(db: Session, stock: Stock) -> dict:
-    signals = compute_signals(db, stock)
+def score_stock(db: Session, stock: Stock, as_of: date | None = None) -> dict:
+    signals = compute_signals(db, stock, as_of=as_of)
     composite = composite_score(signals)
     return {
         "ticker": stock.ticker,

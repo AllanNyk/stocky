@@ -2,12 +2,20 @@
 
 Every signal returns a SignalResult: a 0-100 score, a confidence in [0,1], and
 human-readable evidence the UI can render in the breakdown view. Signals are
-pure functions of (db, stock) so they're easy to compose into a composite.
+pure functions of (db, stock, as_of_date) so they're easy to compose into a
+composite — and so the same code path drives both live scoring and historical
+backtests.
+
+`as_of` is None for live scoring (= "use latest available data") and a concrete
+date for backtests. Signals that don't have meaningful historical inputs
+(currently P/E percentile and WSB mention-delta) return confidence=0 for past
+dates rather than fabricating numbers from current state.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from datetime import date as _date
 from typing import Protocol
 
 from sqlalchemy.orm import Session
@@ -29,7 +37,7 @@ class SignalResult:
 class Signal(Protocol):
     name: str
 
-    def compute(self, db: Session, stock: Stock) -> SignalResult: ...
+    def compute(self, db: Session, stock: Stock, as_of: _date | None = None) -> SignalResult: ...
 
 
 def clip(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
