@@ -4,6 +4,18 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { api, type PriceBar, type ScoreHistoryPoint, type ScoreResponse, type StockRow } from "../api";
 import { fmtDkk, fmtNum, fmtPct, scoreColor, tierColor, tierLabel } from "../format";
 import { TradePanel } from "../components/TradePanel";
+import { RangeSelector, type RangeKey, rangeToDays } from "../components/RangeSelector";
+
+const RANGE_LABELS: Record<RangeKey, string> = {
+  "5D": "5 days",
+  "1M": "1 month",
+  "3M": "3 months",
+  "6M": "6 months",
+  YTD: "year to date",
+  "1Y": "1 year",
+  "5Y": "5 years",
+  MAX: "all available",
+};
 
 export function StockDetailPage() {
   const { ticker = "" } = useParams<{ ticker: string }>();
@@ -12,26 +24,25 @@ export function StockDetailPage() {
   const [score, setScore] = useState<ScoreResponse | null>(null);
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [range, setRange] = useState<RangeKey>("6M");
 
+  // Load static stuff (stock metadata + current composite) once per ticker.
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
       setError(null);
       try {
-        const [s, h, sc, sh] = await Promise.all([
+        const [s, sc] = await Promise.all([
           api.stockDetail(ticker),
-          api.stockHistory(ticker, 180),
           api.stockScore(ticker),
-          api.stockScoreHistory(ticker, 180),
         ]);
         if (cancelled) return;
         setStock(s);
-        setHistory(h);
         setScore(sc);
-        setScoreHistory(sh);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -41,6 +52,30 @@ export function StockDetailPage() {
     void load();
     return () => { cancelled = true; };
   }, [ticker, refreshKey]);
+
+  // Reload chart data whenever the ticker or range changes.
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCharts() {
+      setChartLoading(true);
+      const days = rangeToDays(range);
+      try {
+        const [h, sh] = await Promise.all([
+          api.stockHistory(ticker, days),
+          api.stockScoreHistory(ticker, days),
+        ]);
+        if (cancelled) return;
+        setHistory(h);
+        setScoreHistory(sh);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) setChartLoading(false);
+      }
+    }
+    void loadCharts();
+    return () => { cancelled = true; };
+  }, [ticker, range, refreshKey]);
 
   if (loading) return <div className="notice">Loading {ticker}…</div>;
   if (error || !stock || !score) return <div className="error">Error: {error}</div>;
@@ -64,9 +99,17 @@ export function StockDetailPage() {
       <div className="grid-2">
         <div>
           <div className="panel">
-            <h2 className="h2">6-month price (DKK)</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
+              <h2 className="h2" style={{ margin: 0 }}>
+                Price (DKK){" "}
+                <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>
+                  · {RANGE_LABELS[range]}{chartLoading ? " · loading…" : ""}
+                </span>
+              </h2>
+              <RangeSelector value={range} onChange={setRange} />
+            </div>
             {history.length === 0 ? (
-              <div className="notice">No price history.</div>
+              <div className="notice">No price history for this range.</div>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={history} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
@@ -84,7 +127,7 @@ export function StockDetailPage() {
             <h2 className="h2">Score history</h2>
             {scoreHistory.length === 0 ? (
               <div className="notice">
-                No score snapshots yet — run a backtest from the{" "}
+                No score snapshots in this range — try a longer window, or run a backtest from the{" "}
                 <Link to="/validation">Model check</Link> page to populate this.
               </div>
             ) : (
@@ -101,8 +144,7 @@ export function StockDetailPage() {
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-                  Composite score per snapshot date. The dashed green line at 70 is the
-                  pick threshold for the secondary strategy. Pre-news/WSB dates use
+                  Composite score per snapshot date. Pre-news/WSB/GDELT dates use
                   momentum-only (see backtest caveat).
                 </div>
               </>
