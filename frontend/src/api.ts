@@ -96,6 +96,14 @@ export interface ScoreHistoryPoint {
   price_at_snapshot_dkk: number;
 }
 
+export interface NewsTimelinePoint {
+  date: string;
+  mean_compound: number;
+  sample_size: number;
+  top_headline: string | null;
+  top_headline_score: number | null;
+}
+
 export interface Position {
   ticker: string;
   name: string;
@@ -169,6 +177,8 @@ export const api = {
     request<ScoreResponse>(`/api/stocks/${encodeURIComponent(ticker)}/score`),
   stockScoreHistory: (ticker: string, days = 90) =>
     request<ScoreHistoryPoint[]>(`/api/stocks/${encodeURIComponent(ticker)}/score-history?days=${days}`),
+  stockNewsTimeline: (ticker: string, days = 90) =>
+    request<NewsTimelinePoint[]>(`/api/stocks/${encodeURIComponent(ticker)}/news-timeline?days=${days}`),
   allScores: () => request<ScoreResponse[]>("/api/scores"),
 
   register: (email: string, password: string, display_name: string) =>

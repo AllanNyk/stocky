@@ -9,7 +9,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import DailyScoreSnapshot, PriceHistory, Stock
+from app.models import DailyScoreSnapshot, NewsSentimentScore, PriceHistory, Stock
 from app.services.scoring import score_stock
 
 router = APIRouter(prefix="/api", tags=["stocks"])
@@ -139,6 +139,41 @@ def stock_score_history(ticker: str, days: int = 90, db: Session = Depends(get_d
             "date": r.snapshot_date.isoformat(),
             "composite_score": round(r.composite_score, 2),
             "price_at_snapshot_dkk": r.price_at_snapshot_dkk,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/stocks/{ticker}/news-timeline")
+def stock_news_timeline(ticker: str, days: int = 90, db: Session = Depends(get_db)) -> list[dict]:
+    """Daily news-sentiment aggregates with the day's top (most-extreme) headline.
+
+    Used by the stock-detail page to overlay news markers on the price chart so the
+    user can see whether sentiment moved before / with / after price changes.
+    """
+    stock = db.query(Stock).filter(Stock.ticker == ticker).one_or_none()
+    if stock is None:
+        raise HTTPException(404, f"unknown ticker {ticker!r}")
+    cutoff = date.today() - timedelta(days=days + 1)
+    rows = (
+        db.query(NewsSentimentScore)
+        .filter(
+            NewsSentimentScore.stock_id == stock.id,
+            NewsSentimentScore.score_date >= cutoff,
+            NewsSentimentScore.sample_size > 0,
+        )
+        .order_by(NewsSentimentScore.score_date)
+        .all()
+    )
+    return [
+        {
+            "date": r.score_date.isoformat(),
+            "mean_compound": round(r.mean_compound, 3),
+            "sample_size": r.sample_size,
+            "top_headline": r.top_headline,
+            "top_headline_score": (
+                round(r.top_headline_score, 3) if r.top_headline_score is not None else None
+            ),
         }
         for r in rows
     ]

@@ -1,10 +1,72 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api, type PriceBar, type ScoreHistoryPoint, type ScoreResponse, type StockRow } from "../api";
+import { api, type NewsTimelinePoint, type PriceBar, type ScoreHistoryPoint, type ScoreResponse, type StockRow } from "../api";
 import { fmtDkk, fmtNum, fmtPct, scoreColor, tierColor, tierLabel } from "../format";
 import { TradePanel } from "../components/TradePanel";
 import { RangeSelector, type RangeKey, rangeToDays } from "../components/RangeSelector";
+
+/** Maps VADER compound score in [-1, +1] to a dot color. */
+function sentimentColor(compound: number): string {
+  if (compound >= 0.4) return "#2e8b57";
+  if (compound >= 0.1) return "#7cb342";
+  if (compound > -0.1) return "#9e9e9e";
+  if (compound > -0.4) return "#fb8c00";
+  return "#c62828";
+}
+
+type PriceChartPoint = PriceBar & {
+  news_compound?: number;
+  news_top_headline?: string;
+  news_sample_size?: number;
+};
+
+interface NewsDotProps {
+  cx?: number;
+  cy?: number;
+  payload?: PriceChartPoint;
+}
+
+function NewsDot({ cx, cy, payload }: NewsDotProps) {
+  if (payload?.news_compound === undefined || cx == null || cy == null) return null;
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={5}
+      fill={sentimentColor(payload.news_compound)}
+      stroke="#0e1117"
+      strokeWidth={1.5}
+    />
+  );
+}
+
+function PriceTooltip({ active, payload }: { active?: boolean; payload?: { payload?: PriceChartPoint }[] }) {
+  if (!active || !payload?.length || !payload[0].payload) return null;
+  const p = payload[0].payload;
+  return (
+    <div style={{ background: "#161b22", border: "1px solid #2a313c", padding: "8px 10px", fontSize: 12, maxWidth: 320 }}>
+      <div style={{ color: "#8b949e", marginBottom: 4 }}>{p.date}</div>
+      <div>Close: <b>{p.close_dkk.toFixed(2)} DKK</b></div>
+      {p.news_compound !== undefined && p.news_top_headline && (
+        <div style={{ marginTop: 8, borderTop: "1px solid #2a313c", paddingTop: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span
+              style={{
+                width: 8, height: 8, borderRadius: "50%", display: "inline-block",
+                background: sentimentColor(p.news_compound),
+              }}
+            />
+            <span style={{ color: "#8b949e" }}>
+              News compound {p.news_compound >= 0 ? "+" : ""}{p.news_compound.toFixed(2)} · {p.news_sample_size} headlines
+            </span>
+          </div>
+          <div style={{ lineHeight: 1.4 }}>{p.news_top_headline}</div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const RANGE_LABELS: Record<RangeKey, string> = {
   "5D": "5 days",
@@ -23,6 +85,7 @@ export function StockDetailPage() {
   const [history, setHistory] = useState<PriceBar[]>([]);
   const [score, setScore] = useState<ScoreResponse | null>(null);
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryPoint[]>([]);
+  const [news, setNews] = useState<NewsTimelinePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,13 +123,15 @@ export function StockDetailPage() {
       setChartLoading(true);
       const days = rangeToDays(range);
       try {
-        const [h, sh] = await Promise.all([
+        const [h, sh, n] = await Promise.all([
           api.stockHistory(ticker, days),
           api.stockScoreHistory(ticker, days),
+          api.stockNewsTimeline(ticker, days),
         ]);
         if (cancelled) return;
         setHistory(h);
         setScoreHistory(sh);
+        setNews(n);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -76,6 +141,22 @@ export function StockDetailPage() {
     void loadCharts();
     return () => { cancelled = true; };
   }, [ticker, range, refreshKey]);
+
+  // Merge news data into the price series by date so the chart's dot renderer can find it.
+  const priceChartData: PriceChartPoint[] = useMemo(() => {
+    if (history.length === 0) return [];
+    const newsByDate = new Map(news.map((n) => [n.date, n]));
+    return history.map((bar) => {
+      const n = newsByDate.get(bar.date);
+      if (!n) return bar;
+      return {
+        ...bar,
+        news_compound: n.mean_compound,
+        news_top_headline: n.top_headline ?? undefined,
+        news_sample_size: n.sample_size,
+      };
+    });
+  }, [history, news]);
 
   if (loading) return <div className="notice">Loading {ticker}…</div>;
   if (error || !stock || !score) return <div className="error">Error: {error}</div>;
@@ -111,15 +192,34 @@ export function StockDetailPage() {
             {history.length === 0 ? (
               <div className="notice">No price history for this range.</div>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={history} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
-                  <CartesianGrid stroke="#2a313c" strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#8b949e" }} minTickGap={40} />
-                  <YAxis tick={{ fontSize: 11, fill: "#8b949e" }} domain={["dataMin", "dataMax"]} />
-                  <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #2a313c" }} />
-                  <Line dataKey="close_dkk" stroke="#4f8eff" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <>
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={priceChartData} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+                    <CartesianGrid stroke="#2a313c" strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#8b949e" }} minTickGap={40} />
+                    <YAxis tick={{ fontSize: 11, fill: "#8b949e" }} domain={["dataMin", "dataMax"]} />
+                    <Tooltip content={<PriceTooltip />} />
+                    <Line dataKey="close_dkk" stroke="#4f8eff" strokeWidth={2} dot={<NewsDot />} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+                {news.length > 0 && (
+                  <div className="muted" style={{ fontSize: 12, marginTop: 8, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span>News dots ({news.length} days):</span>
+                    {[
+                      { c: "#c62828", label: "very negative" },
+                      { c: "#fb8c00", label: "negative" },
+                      { c: "#9e9e9e", label: "neutral" },
+                      { c: "#7cb342", label: "positive" },
+                      { c: "#2e8b57", label: "very positive" },
+                    ].map((l) => (
+                      <span key={l.label} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: l.c, display: "inline-block" }} />
+                        {l.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
