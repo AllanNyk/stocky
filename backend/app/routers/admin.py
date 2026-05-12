@@ -7,6 +7,7 @@ If unset, endpoints remain open for local-dev convenience.
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.services.fx import refresh_fx_rates
 from app.services.gdelt import refresh_country_tone
