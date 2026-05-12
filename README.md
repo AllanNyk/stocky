@@ -144,6 +144,16 @@ frontend/
     components/TradePanel.tsx
 ```
 
+## Deploying somewhere reachable from your phone
+
+See [DEPLOY.md](DEPLOY.md) for step-by-step instructions for Render + Supabase
++ Vercel (all free tiers). The short version:
+
+1. Provision a Postgres database (Supabase / Neon).
+2. From your laptop, point at it and run `alembic upgrade head` once.
+3. Deploy the backend to Render, frontend to Vercel. Set `ADMIN_TOKEN` to
+   lock down `/api/admin/*` once anything outside localhost can reach it.
+
 ## Roadmap beyond Phase 1
 
 Designed-for-but-deferred work, in rough priority order:

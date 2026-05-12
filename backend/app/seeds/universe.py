@@ -1,9 +1,16 @@
 """Curated stock universe: US large-caps + heavy Nordic coverage + benchmarks.
 
-NOTE on `pluto_tier`: PLACEHOLDER classifications based on the general pattern of
-Nordic commission-free brokers (curated list of major US + Nordic names is fee-free,
-everything else is `standard_fee`). The real Pluto Markets list should be hand-verified
-against pluto.markets and edited here before treating tier as authoritative.
+NOTE on `pluto_tier`: per pluto.markets (verified 2026-05-12) Pluto operates a flat
+commission-free model on all stocks + ETFs in their offering — ~4,000 products across
+US (~3,700 names), the 26 largest Danish stocks, "largest European stocks" (Swedish /
+Norwegian / Finnish / German etc.), and 60 of the largest European ETFs. They charge
+ONLY on:
+  - crypto (1%)
+  - extended trading hours (0.1%)
+  - currency exchange (0.15%)
+So in this universe everything tradeable is `commission_free`. The `standard_fee`
+tier is kept as a schema option for future brokers / changes but isn't used today.
+Indices (`^OMX*`) remain `not_listed` because you can't trade an index directly.
 
 NOTE on `wsb_aliases`: pipe-separated tokens that WSB / r/stocks posters typically use
 to refer to each stock, AND used by the news-sentiment ticker-mention filter. Use the
@@ -51,7 +58,7 @@ UNIVERSE: list[SeedStock] = [
     SeedStock("NVDA",  "NVIDIA Corporation",               "NASDAQ", "USD", "Technology",          "commission_free", "NVDA|Nvidia",                      "US"),
     SeedStock("META",  "Meta Platforms Inc.",              "NASDAQ", "USD", "Communication",       "commission_free", "META|Meta|Facebook",               "US"),
     SeedStock("TSLA",  "Tesla Inc.",                       "NASDAQ", "USD", "Consumer Cyclical",   "commission_free", "TSLA|Tesla",                       "US"),
-    SeedStock("BRK-B", "Berkshire Hathaway Inc. Class B",  "NYSE",   "USD", "Financial Services",  "standard_fee",    "BRK|BRK.B|Berkshire|Buffett",      "US"),
+    SeedStock("BRK-B", "Berkshire Hathaway Inc. Class B",  "NYSE",   "USD", "Financial Services",  "commission_free",    "BRK|BRK.B|Berkshire|Buffett",      "US"),
     SeedStock("JPM",   "JPMorgan Chase & Co.",             "NYSE",   "USD", "Financial Services",  "commission_free", "JPM|JPMorgan",                     "US"),
     SeedStock("V",     "Visa Inc.",                        "NYSE",   "USD", "Financial Services",  "commission_free", "Visa",                             "US"),
     SeedStock("MA",    "Mastercard Incorporated",          "NYSE",   "USD", "Financial Services",  "commission_free", "Mastercard",                       "US"),
@@ -131,9 +138,9 @@ UNIVERSE: list[SeedStock] = [
     SeedStock("HLUN-B.CO",   "H. Lundbeck A/S B",          "CPH", "DKK", "Healthcare",          "commission_free", "Lundbeck",                     "DA"),
     SeedStock("RBREW.CO",    "Royal Unibrew A/S",          "CPH", "DKK", "Consumer Defensive",  "commission_free", "Royal Unibrew|Unibrew",        "DA"),
     SeedStock("TOP.CO",      "Topdanmark A/S",             "CPH", "DKK", "Financial Services",  "commission_free", "Topdanmark",                   "DA"),
-    SeedStock("ZEAL.CO",     "Zealand Pharma A/S",         "CPH", "DKK", "Healthcare",          "standard_fee",    "Zealand Pharma",               "DA"),
+    SeedStock("ZEAL.CO",     "Zealand Pharma A/S",         "CPH", "DKK", "Healthcare",          "commission_free",    "Zealand Pharma",               "DA"),
     SeedStock("SYDB.CO",     "Sydbank A/S",                "CPH", "DKK", "Financial Services",  "commission_free", "Sydbank",                      "DA"),
-    SeedStock("BAVA.CO",     "Bavarian Nordic A/S",        "CPH", "DKK", "Healthcare",          "standard_fee",    "Bavarian Nordic",              "DA"),
+    SeedStock("BAVA.CO",     "Bavarian Nordic A/S",        "CPH", "DKK", "Healthcare",          "commission_free",    "Bavarian Nordic",              "DA"),
 
     # ===================================================================
     # Sweden (FIPS: SW) — 12 names
@@ -142,7 +149,7 @@ UNIVERSE: list[SeedStock] = [
     SeedStock("ATCO-A.ST",   "Atlas Copco A",              "STO", "SEK", "Industrials",         "commission_free", "Atlas Copco",                  "SW"),
     SeedStock("ERIC-B.ST",   "Ericsson B",                 "STO", "SEK", "Technology",          "commission_free", "ERIC|Ericsson",                "SW"),
     SeedStock("HM-B.ST",     "H & M Hennes & Mauritz B",   "STO", "SEK", "Consumer Cyclical",   "commission_free", "H&M",                          "SW"),
-    SeedStock("INVE-B.ST",   "Investor AB B",              "STO", "SEK", "Financial Services",  "standard_fee",    "Investor AB",                  "SW"),
+    SeedStock("INVE-B.ST",   "Investor AB B",              "STO", "SEK", "Financial Services",  "commission_free",    "Investor AB",                  "SW"),
     SeedStock("SAND.ST",     "Sandvik AB",                 "STO", "SEK", "Industrials",         "commission_free", "Sandvik",                      "SW"),
     SeedStock("SKF-B.ST",    "SKF B",                      "STO", "SEK", "Industrials",         "commission_free", "SKF",                          "SW"),
     SeedStock("ALFA.ST",     "Alfa Laval AB",              "STO", "SEK", "Industrials",         "commission_free", "Alfa Laval",                   "SW"),

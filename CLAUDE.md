@@ -91,14 +91,25 @@ Weights live in `app/services/scoring.py::SIGNAL_WEIGHTS`. Sum must equal 1.0.
 - **Trades are append-only.** `Trade` is the source of truth; `Position` is a
   derived current-state cache (`quantity`, `avg_cost_dkk`). If they ever
   disagree, rebuild positions from the trade log.
-- **Pluto tiers (`commission_free` / `standard_fee` / `not_listed`)** drive
-  trade fees in `services/trading.py::FEE_BY_TIER`. Benchmarks are `not_listed`
-  and cannot be traded. The seed values are PLACEHOLDERS — comment in
-  `seeds/universe.py` flags this.
-- **Schema changes** for existing tables go through `db.py::_ADDITIVE_COLUMNS`
-  so existing dev DBs upgrade in place. Brand-new tables come from
-  `Base.metadata.create_all` automatically. Switch to Alembic when we move to
-  Postgres.
+- **Pluto tiers** drive trade fees in `services/trading.py::FEE_BY_TIER`.
+  Verified against pluto.markets 2026-05-12: Pluto charges *no commission* on
+  any stock or ETF — fees apply only to crypto (1%), extended-hours (0.1%),
+  FX (0.15%). So every tradeable name in our universe is `commission_free`.
+  Indices are `not_listed` (you can't buy an index directly anyway).
+  `standard_fee` is kept as a schema option in case the broker model changes
+  or a second broker is added; currently unused.
+- **Schema changes** — Alembic is authoritative going forward
+  (`backend/alembic/versions/`). On dev SQLite we *also* run
+  `Base.metadata.create_all` + the legacy `apply_additive_migrations` helper
+  in `app/db.py::_ADDITIVE_COLUMNS` on startup, so devs don't need to remember
+  to run `alembic upgrade head` after every model edit. On Postgres / prod,
+  Alembic is the only mechanism — run `alembic upgrade head` as a deploy step
+  (see `DEPLOY.md`). Workflow for a new schema change:
+  1. Edit ORM model.
+  2. `cd backend && python -m alembic revision --autogenerate -m "describe change"`
+  3. Inspect the generated file in `alembic/versions/`; tweak if needed.
+  4. Commit it. Local SQLite picks up the change via `create_all` /
+     `apply_additive_migrations`; prod picks it up via `alembic upgrade head`.
 
 ---
 
