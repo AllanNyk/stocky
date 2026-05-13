@@ -257,10 +257,11 @@ export const api = {
     request<void>("/api/notifications/read-all", { method: "POST", auth: true }),
   allScores: () => request<ScoreResponse[]>("/api/scores"),
 
-  register: (email: string, password: string, display_name: string) =>
+  gateStatus: () => request<{ invite_required: boolean }>("/api/auth/gate"),
+  register: (email: string, password: string, display_name: string, invite_code?: string) =>
     request<{ access_token: string }>("/api/auth/register", {
       method: "POST",
-      body: { email, password, display_name },
+      body: { email, password, display_name, invite_code },
     }),
   login: (email: string, password: string) => {
     const form = new URLSearchParams();

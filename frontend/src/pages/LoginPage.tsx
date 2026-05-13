@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { api } from "../api";
 import { useAuth } from "../auth";
 
 export function LoginPage() {
@@ -8,8 +9,14 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteRequired, setInviteRequired] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    void api.gateStatus().then((g) => setInviteRequired(g.invite_required)).catch(() => undefined);
+  }, []);
 
   if (me) return <Navigate to="/market" replace />;
 
@@ -19,7 +26,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       if (mode === "login") await login(email, password);
-      else await register(email, password, displayName || email.split("@")[0]);
+      else await register(email, password, displayName || email.split("@")[0], inviteCode || undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -61,13 +68,24 @@ export function LoginPage() {
             required
             minLength={6}
           />
+          {mode === "register" && inviteRequired && (
+            <input
+              placeholder="Invite code"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              required
+              autoComplete="off"
+            />
+          )}
           {error && <div className="error">{error}</div>}
           <button type="submit" disabled={submitting}>
             {submitting ? "…" : mode === "login" ? "Log in" : "Create account"}
           </button>
           {mode === "register" && (
             <div className="muted" style={{ fontSize: 12 }}>
-              New accounts start with 100,000 DKK in mock cash.
+              {inviteRequired
+                ? "Registration is invite-only. Ask Allan for a code."
+                : "New accounts start with 100,000 DKK in mock cash."}
             </div>
           )}
         </form>

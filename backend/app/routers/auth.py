@@ -15,6 +15,11 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str
     display_name: str
+    invite_code: str | None = None
+
+
+class GateStatusOut(BaseModel):
+    invite_required: bool
 
 
 class TokenOut(BaseModel):
@@ -29,8 +34,19 @@ class MeOut(BaseModel):
     cash_balance_dkk: float
 
 
+@router.get("/gate", response_model=GateStatusOut)
+def gate_status() -> GateStatusOut:
+    """Lets the frontend know whether the registration form needs an invite-code field."""
+    return GateStatusOut(invite_required=settings.invite_required)
+
+
 @router.post("/register", response_model=TokenOut)
 def register(body: RegisterIn, db: Session = Depends(get_db)) -> TokenOut:
+    if settings.invite_required:
+        # Constant-time comparison would be nicer but the secret is rotated by the
+        # owner whenever they want to revoke; timing leaks here aren't load-bearing.
+        if not body.invite_code or body.invite_code != settings.invite_code:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "invalid or missing invite code")
     existing = db.query(User).filter(User.email == body.email).one_or_none()
     if existing is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "email already registered")

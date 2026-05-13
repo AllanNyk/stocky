@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     finnhub_api_key: str = ""
     admin_token: str = ""
+    invite_code: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -33,6 +34,10 @@ class Settings(BaseSettings):
     @property
     def admin_enforced(self) -> bool:
         return bool(self.admin_token)
+
+    @property
+    def invite_required(self) -> bool:
+        return bool(self.invite_code)
 
 
 settings = Settings()

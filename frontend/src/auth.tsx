@@ -5,7 +5,7 @@ interface AuthValue {
   me: Me | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
+  register: (email: string, password: string, displayName: string, inviteCode?: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -44,8 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(r.access_token);
       await fetchMe();
     },
-    async register(email, password, displayName) {
-      const r = await api.register(email, password, displayName);
+    async register(email, password, displayName, inviteCode) {
+      const r = await api.register(email, password, displayName, inviteCode);
       setToken(r.access_token);
       await fetchMe();
     },
