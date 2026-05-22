@@ -9,7 +9,7 @@ truth), edit `~/.claude/CLAUDE.md` instead — that one isn't checked in.
 
 ## What Stocky is
 
-A paper-trading web app for US + Nordic stocks with a transparent 7-signal
+A paper-trading web app for US + Nordic stocks with a transparent 9-signal
 prediction score. Base currency is **DKK**. No real money is involved at any
 point, by design — there is no broker integration and there never will be.
 
@@ -28,8 +28,10 @@ returns of virtual portfolios that buy the top-5 / threshold-70 picks each day.
 
 - **Backend**: Python 3.13 · FastAPI · SQLAlchemy 2 · SQLite (dev) · APScheduler
 - **Frontend**: React 19 + TypeScript · Vite · React Router · Recharts
-- **Data sources** (all free): yfinance (prices, fundamentals, news) · Reddit API
-  via praw (creds optional) · GDELT 2.0 DOC API · VADER for headline sentiment
+- **Data sources** (all free): yfinance (prices, fundamentals, news) · StockTwits
+  public stream (bull/bear tags) · Finnhub insider transactions (key optional) ·
+  GDELT 2.0 DOC API · VADER for headline sentiment · Reddit API via praw (dormant —
+  see signal table)
 - **Auth**: JWT, bcrypt direct (passlib is unmaintained — do not reintroduce)
 
 ---
@@ -55,7 +57,7 @@ automatically via the lifespan hook + `apply_additive_migrations()`.
 
 ---
 
-## The 7 signals (in `backend/app/services/signals/`)
+## The 9 signals (in `backend/app/services/signals/`)
 
 Each signal implements `compute(db, stock, as_of=None) -> SignalResult` and
 returns a 0-100 score + confidence in [0, 1] + evidence dict. Composite is a
@@ -64,15 +66,20 @@ remaining weights renormalize.
 
 | Signal | Source | Backtest? | Weight |
 |---|---|---|---|
-| `pe_percentile` | yfinance fundamentals (sector-relative) | No (no historical PE) | 0.15 |
-| `momentum_50d` | PriceHistory | Yes | 0.20 |
-| `percentile_52w` | PriceHistory (1y window) | Yes | 0.15 |
-| `volume_momentum` | PriceHistory (5d vs 50d) | Yes | 0.10 |
-| `wsb_mention_delta` | Reddit API (r/wallstreetbets, r/stocks, r/investing) | No (no historical scrape) | 0.10 |
-| `news_sentiment` | yfinance.Ticker.news + VADER | No (yf.news isn't backdated) | 0.15 |
-| `geopolitical_tone` | GDELT 2.0 country tone | Yes once we've been scraping a few days | 0.15 |
+| `momentum_50d` | PriceHistory | Yes | 0.17 |
+| `pe_percentile` | yfinance fundamentals (sector-relative) | No (no historical PE) | 0.13 |
+| `news_sentiment` | yfinance.Ticker.news + VADER | No (yf.news isn't backdated) | 0.13 |
+| `percentile_52w` | PriceHistory (1y window) | Yes | 0.12 |
+| `geopolitical_tone` | GDELT 2.0 country tone | Yes once we've been scraping a few days | 0.12 |
+| `insider_activity` | Finnhub insider transactions (US-only; key optional) | Yes once scraped | 0.11 |
+| `social_sentiment` | StockTwits bull/bear tags (US-only) | Yes once scraped | 0.10 |
+| `volume_momentum` | PriceHistory (5d vs 50d) | Yes | 0.08 |
+| `wsb_mention_delta` | Reddit API — **dormant** (returns confidence 0; Reddit's Responsible Builder Policy gates personal-use access) | No | 0.04 |
 
 Weights live in `app/services/scoring.py::SIGNAL_WEIGHTS`. Sum must equal 1.0.
+`wsb_mention_delta` is a kept-but-dormant slot: it stays at confidence 0 and
+re-activates without code changes if Reddit access reopens. `insider_activity`
+and `social_sentiment` return confidence 0 for non-US tickers (data coverage).
 
 ---
 
@@ -98,6 +105,10 @@ Weights live in `app/services/scoring.py::SIGNAL_WEIGHTS`. Sum must equal 1.0.
   Indices are `not_listed` (you can't buy an index directly anyway).
   `standard_fee` is kept as a schema option in case the broker model changes
   or a second broker is added; currently unused.
+- **Registration is invite-gated when `INVITE_CODE` is set.** If the env var is
+  set, `/api/auth/register` requires a matching `invite_code` in the body;
+  `/api/auth/gate-status` tells the frontend whether to render the invite field.
+  Unset = open registration (dev default). Mirrors the `ADMIN_TOKEN` pattern.
 - **Schema changes** — Alembic is authoritative going forward
   (`backend/alembic/versions/`). On dev SQLite we *also* run
   `Base.metadata.create_all` + the legacy `apply_additive_migrations` helper
@@ -127,8 +138,10 @@ Weights live in `app/services/scoring.py::SIGNAL_WEIGHTS`. Sum must equal 1.0.
   was about a Chicago scam victim). Tightening the filter is a TODO.
 - **`^OMXS30` (Stockholm 30 index) does not exist on Yahoo** — use `^OMXSPI`
   (Stockholm All-Share) instead. Already in the seed.
-- **`/api/admin/*` and `/api/validation/run-*` are unauthenticated** for
-  local-dev convenience. Lock them before deploying anywhere reachable.
+- **`/api/admin/*` is gated by `ADMIN_TOKEN`** (sent as the `X-Admin-Token`
+  header) *only when the env var is set*. If `ADMIN_TOKEN` is unset the endpoints
+  stay open for local-dev convenience — so always set it in any deployed env.
+  `/api/validation/run-*` is still open; lock it the same way before exposing it.
 - **Vite dev server occasionally dies silently.** Restart with `npm run dev`.
   Frontend production build is healthy — verify with `npm run build`.
 - **PowerShell quirks**: stderr-to-stdout from native cmds shows as
@@ -145,20 +158,23 @@ backend/app/
   config.py                # Settings (.env-driven, pydantic-settings)
   db.py                    # Engine, SessionLocal, apply_additive_migrations
   security.py              # bcrypt + JWT (NOT passlib — see Conventions)
-  scheduler.py             # APScheduler jobs (price 23:00, reddit 23:05, news 23:07, gdelt 23:08, snapshot 23:10 CET)
-  models/                  # SQLAlchemy ORM, one file per concept
-  routers/                 # FastAPI endpoint groups (admin, auth, stocks, portfolio, validation, watchlist)
+  scheduler.py             # APScheduler jobs (stocktwits 22:58, price+fx 23:00, reddit 23:05, news 23:07, gdelt 23:08, insider 23:09, snapshot+alerts 23:10 CET)
+  models/                  # SQLAlchemy ORM, one file per concept (incl. alerts.py: AlertRule, Notification)
+  routers/                 # FastAPI endpoint groups (admin, auth, stocks, portfolio, validation, watchlist, alerts, movers)
   services/
     ingestion.py           # yfinance prices + fundamentals
     fx.py                  # daily DKK FX rates
     news_sentiment.py      # yfinance news + VADER
-    reddit.py              # praw mention scraper
+    stocktwits.py          # StockTwits per-symbol stream (bull/bear tags)
+    insider.py             # Finnhub insider transactions
+    reddit.py              # praw mention scraper (dormant)
     gdelt.py               # GDELT 2.0 country tone
     scoring.py             # composite + SIGNAL_WEIGHTS (the heart of the model)
     snapshots.py           # daily snapshot + backtest replay + forward-return queries
+    alerts.py              # score-crossing alert evaluation (called from snapshot job)
     trading.py             # paper-trading engine (fees by Pluto tier)
     signals/               # one file per signal
-  seeds/universe.py        # the 30 stocks + 3 benchmarks (hand-curated)
+  seeds/universe.py        # 116 hand-curated names (111 stocks + 5 benchmarks), US + heavy Nordic
 
 frontend/src/
   api.ts                   # Typed fetch client + endpoint surface

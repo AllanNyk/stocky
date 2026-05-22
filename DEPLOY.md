@@ -70,12 +70,13 @@ On **Render** (the path I recommend for first deploy):
    ```
    DATABASE_URL = postgresql+psycopg://…
    JWT_SECRET = <generate a long random string>
-   ADMIN_TOKEN = <generate another long random string>
+   ADMIN_TOKEN = <generate another long random string>   # required to lock /api/admin/*
    CORS_ORIGINS = https://your-frontend-url.vercel.app
-   REDDIT_CLIENT_ID = …  (optional)
+   INVITE_CODE = <optional — set to gate registration; unset = open signup>
+   FINNHUB_API_KEY = …  (optional — enables the insider-activity signal)
+   REDDIT_CLIENT_ID = …  (optional — WSB signal is dormant; no-op without approved creds)
    REDDIT_CLIENT_SECRET = …  (optional)
    REDDIT_USER_AGENT = stocky-prod/0.1 by u/<your reddit username>
-   FINNHUB_API_KEY = …  (optional)
    ```
 6. Deploy. After it's live, hit `https://your-backend.onrender.com/api/health` to verify.
 
@@ -108,13 +109,16 @@ $h = @{ "X-Admin-Token" = "your-admin-token" }
 Invoke-RestMethod -Method POST -Headers $h "https://your-backend.onrender.com/api/admin/refresh-fx"
 Invoke-RestMethod -Method POST -Headers $h "https://your-backend.onrender.com/api/admin/refresh-prices?period=5y"
 Invoke-RestMethod -Method POST -Headers $h "https://your-backend.onrender.com/api/admin/refresh-news"
+Invoke-RestMethod -Method POST -Headers $h "https://your-backend.onrender.com/api/admin/refresh-stocktwits"
+Invoke-RestMethod -Method POST -Headers $h "https://your-backend.onrender.com/api/admin/refresh-insider"
 Invoke-RestMethod -Method POST -Headers $h "https://your-backend.onrender.com/api/admin/refresh-gdelt"
 Invoke-RestMethod -Method POST -Headers $h "https://your-backend.onrender.com/api/validation/run-backtest?days=90"
 ```
 
-The universe seed runs automatically on every backend startup, so all 116 stocks will
-be in the database already; the admin calls above fill them with prices, news, and
-geopolitical data.
+The universe seed runs automatically on every backend startup, so all 116 names
+(111 stocks + 5 benchmarks) will be in the database already; the admin calls above
+fill them with prices, news, social, insider, and geopolitical data. (`refresh-insider`
+is a no-op without `FINNHUB_API_KEY`; `refresh-stocktwits` needs no key.)
 
 ## Future schema changes
 
