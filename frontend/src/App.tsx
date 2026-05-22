@@ -68,7 +68,9 @@ export default function App() {
     <AuthProvider>
       <WatchlistProvider>
         <NotificationsProvider>
-          <BrowserRouter>
+          {/* basename = Vite's configured base (e.g. "/stocky" on GitHub Pages,
+              "" locally) so routes work under a project-site subpath. */}
+          <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <RouterRoot />
           </BrowserRouter>
         </NotificationsProvider>
