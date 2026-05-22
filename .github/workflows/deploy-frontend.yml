@@ -1,12 +1,17 @@
-name: Deploy frontend to GitHub Pages
+name: Deploy frontend to allansjoelin.com/stocky
 
-# Builds the Vite/React app in frontend/ and publishes it to GitHub Pages.
-# No secrets required — Pages deploys via the built-in GITHUB_TOKEN + OIDC.
+# Builds the Vite/React app and uploads the static output to the shared host
+# (Apache) via FTPS, into the /stocky subfolder of the web root. The site is
+# then served at https://www.allansjoelin.com/stocky/.
 #
-# The backend host is not decided yet. Until it is, set the GitHub Actions
-# *variable* VITE_API_BASE (repo Settings → Secrets and variables → Actions →
-# Variables) to your backend URL and re-run this workflow; the build inlines it.
-# It's a public URL, so it's a variable, not a secret.
+# Required repo SECRETS (Settings → Secrets and variables → Actions → Secrets):
+#   FTP_SERVER     host of your FTP server (e.g. ftp.allansjoelin.com)
+#   FTP_USERNAME   FTP login
+#   FTP_PASSWORD   FTP password
+# Required repo VARIABLES (same page → Variables tab — these aren't secret):
+#   FTP_SERVER_DIR target dir on the host, MUST end in stocky/ (e.g. /public_html/stocky/)
+#   VITE_API_BASE  backend URL (leave unset until the backend host exists; app
+#                  can't reach data until it's set and this workflow re-run)
 
 on:
   push:
@@ -16,25 +21,29 @@ on:
       - ".github/workflows/deploy-frontend.yml"
   workflow_dispatch: {}
 
-# Least-privilege permissions the Pages deploy action needs.
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Only one Pages deploy at a time; newer pushes supersede in-flight ones.
 concurrency:
-  group: pages
+  group: deploy-frontend
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+
+      - name: Guard against syncing over the whole site
+        # FTP-Deploy-Action mirrors local-dir onto server-dir and prunes remote
+        # files that aren't local. If server-dir were the web root that would
+        # wipe the existing site, so refuse anything not scoped to /stocky/.
+        run: |
+          dir="${{ vars.FTP_SERVER_DIR }}"
+          if [ -z "$dir" ]; then
+            echo "::error::Set the FTP_SERVER_DIR repo variable to your stocky subfolder (e.g. /public_html/stocky/)"; exit 1
+          fi
+          case "$dir" in
+            */stocky/) : ;;
+            *) echo "::error::FTP_SERVER_DIR must end in 'stocky/' to avoid overwriting your site. Got: $dir"; exit 1 ;;
+          esac
 
       - uses: actions/setup-node@v4
         with:
@@ -42,33 +51,23 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - run: npm ci
+      - name: Install deps
+        working-directory: frontend
+        run: npm ci
 
       - name: Build
+        working-directory: frontend
         env:
-          # Project site lives under /<repo>/ — keep in sync with the repo name.
           VITE_BASE: /stocky/
-          # Backend URL (empty until the backend host is chosen). Falls back to
-          # localhost in api.ts, so the deployed app won't reach a backend until
-          # this variable is set and the workflow re-run.
           VITE_API_BASE: ${{ vars.VITE_API_BASE }}
         run: npm run build
 
-      - name: SPA fallback for client-side routes
-        # GitHub Pages has no SPA rewrite; serving index.html as 404.html lets
-        # deep links / refreshes (e.g. /stocky/portfolio) boot the app.
-        run: cp dist/index.html dist/404.html
-
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload to shared host via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          path: frontend/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: frontend/dist/
+          server-dir: ${{ vars.FTP_SERVER_DIR }}

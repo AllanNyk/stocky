@@ -1,0 +1,12 @@
+# SPA client-side routing fallback for the React app served at /stocky/.
+# Apache serves real files/dirs directly; anything else falls back to
+# index.html so React Router can resolve the route (deep links, refresh).
+# RewriteBase must match the deploy subpath — keep in sync with VITE_BASE.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /stocky/
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /stocky/index.html [L]
+</IfModule>
